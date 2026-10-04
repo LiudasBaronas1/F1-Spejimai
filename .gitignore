@@ -1,0 +1,21 @@
+# Asmeniniai ir vietiniai duomenys: duomenų bazė, Excel lentelė, F1 talpykla, žurnalai.
+# Naujas vartotojas gauna pradinius duomenis iš programa/pradiniai_duomenys/.
+duomenys/
+*.xlsx
+*.xls
+
+# Python aplinka ir talpyklos (sukuriama kiekviename kompiuteryje – programa/idiegti.bat)
+.venv/
+__pycache__/
+*.pyc
+
+# Automatiškai generuojama programos
+PARAMETRAI.md
+
+# Asmeninės ekrano nuotraukos
+Ekrano nuotraukos/
+
+# Sistemos failai
+Thumbs.db
+desktop.ini
+.DS_Store

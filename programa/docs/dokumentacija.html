@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<title>F1 Spėjimai – dokumentacija</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,400;0,600;0,700;0,900;1,700;1,900&display=swap');
+@page { size: A4; margin: 16mm 15mm 18mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Titillium Web', 'Segoe UI', sans-serif; color: #15151E; font-size: 11pt; line-height: 1.5; margin: 0; }
+h1, h2, h3 { font-weight: 900; font-style: italic; text-transform: uppercase; letter-spacing: .01em; }
+h2 { font-size: 18pt; border-left: 6px solid #E10600; padding-left: 10px; margin: 0 0 10px; page-break-after: avoid; }
+h3 { font-size: 12.5pt; margin: 16px 0 6px; color: #E10600; page-break-after: avoid; }
+p { margin: 6px 0; }
+section { page-break-before: always; }
+.cover { height: 262mm; background: #15151E; color: #fff; padding: 30mm 18mm; position: relative; page-break-after: always;
+         -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.cover .mark { width: 90px; height: 46px; background: #E10600; transform: skewX(-25deg); margin-bottom: 26px; }
+.cover h1 { font-size: 44pt; margin: 0; line-height: 1; }
+.cover h1 span { color: #E10600; }
+.cover .sub { font-size: 15pt; color: #B4B4BE; text-transform: uppercase; letter-spacing: .1em; margin-top: 10px; }
+.cover .lead { font-size: 13pt; max-width: 140mm; margin-top: 40mm; line-height: 1.6; }
+.cover .foot { position: absolute; bottom: 20mm; left: 18mm; color: #B4B4BE; font-size: 10pt; }
+.box { background: #F4F4F6; border-left: 4px solid #E10600; padding: 8px 12px; margin: 10px 0; page-break-inside: avoid;
+       -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.box b.t { display: block; text-transform: uppercase; font-style: italic; color: #E10600; font-size: 10pt; }
+.steps { counter-reset: s; list-style: none; padding: 0; }
+.steps li { counter-increment: s; position: relative; padding: 6px 0 6px 42px; page-break-inside: avoid; }
+.steps li::before { content: counter(s); position: absolute; left: 0; top: 4px; width: 30px; height: 30px; background: #E10600;
+       color: #fff; font-weight: 900; font-style: italic; text-align: center; line-height: 30px; transform: skewX(-12deg);
+       -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10pt; page-break-inside: avoid; }
+th { text-align: left; background: #15151E; color: #fff; padding: 5px 8px; text-transform: uppercase; font-size: 8.5pt;
+     -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+td { padding: 5px 8px; border-bottom: 1px solid #DDD; vertical-align: top; }
+tr.hl td { background: #FDECEC; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+img.shot { width: 100%; border: 1px solid #CCC; margin: 6px 0; page-break-inside: avoid; }
+.cap { font-size: 9pt; color: #666; margin-top: -2px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+code { background: #F0F0F2; padding: 1px 4px; font-size: 9.5pt; }
+.toc li { margin: 3px 0; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="mark"></div>
+  <h1>F1 <span>Spėjimai</span></h1>
+  <div class="sub">Programos dokumentacija</div>
+  <div class="lead">Kaip veikia modelis, padedantis spėti kiekvienos Formulės 1 sesijos TOP3 mūsų totalizatoriuje:
+    iš kur imami duomenys, kaip skaičiuojamos tikimybės ir kaip naudotis programa.</div>
+  <div class="foot">Versija: 2026 m. spalio mėn. · Dokumentas atnaujinamas kartu su programa</div>
+</div>
+
+<section style="page-break-before: auto">
+<h2>Turinys</h2>
+<ol class="toc">
+  <li>Kam skirta programa</li>
+  <li>Kaip pradėti (5 žingsniai)</li>
+  <li>Programos langas</li>
+  <li>Kaip modelis spėja – paprastai</li>
+  <li>Iš kur imami duomenys</li>
+  <li>Kiek modelis tikslus</li>
+  <li>Automatinis spėjimas prieš sesiją</li>
+  <li>Dažni klausimai</li>
+  <li>Techninė dalis (programuotojui)</li>
+</ol>
+
+<h2 style="margin-top:22px">1. Kam skirta programa</h2>
+<p>Totalizatoriuje kiekvienai sesijai (kvalifikacijai, lenktynėms, o sprinto savaitgalį – ir sprinto kvalifikacijai bei
+sprintui) spėjame <b>TOP3 vairuotojus</b>. Taškai skaičiuojami taip:</p>
+<table>
+  <tr><th>Situacija</th><th>Taškai</th></tr>
+  <tr><td>Vairuotojas atspėtas tiksliai savo vietoje</td><td>2</td></tr>
+  <tr><td>Vairuotojas pateko į TOP3, bet kitoje vietoje</td><td>1</td></tr>
+  <tr><td>Vairuotojas nepateko į TOP3</td><td>0</td></tr>
+</table>
+<p>Programa kiekvienai sesijai apskaičiuoja, kokia tikimybė kiekvienam vairuotojui užimti 1, 2 ar 3 vietą, ir
+pasiūlo tą trejetą, kuris <b>vidutiniškai atneša daugiausiai taškų</b>. Tai ne visada tas pats, kas „labiausiai
+tikėtinas rezultatas“ – kartais verta į trejetą įrašyti vairuotoją, kuris labai patikimai patenka į TOP3, net jei retai laimi.</p>
+<div class="box"><b class="t">Svarbu</b>Rezultatai vertinami pagal tai, kas pirmas <b>kirto finišo liniją</b>.
+Baudos, skirtos jau po finišo, neįskaičiuojamos – taip, kaip numato mūsų taisyklės.</div>
+</section>
+
+<section>
+<h2>2. Kaip pradėti</h2>
+<ol class="steps">
+  <li><b>Paleiskite programą.</b> Atsisiųstame ir išskleistame aplanke dukart spustelėkite <b>„F1 Spėjimai.vbs“</b>.
+      Pirmą kartą programa pati įdiegs, ko reikia (Python, jei jo nėra, ir bibliotekas; 2–5 min., reikia interneto)
+      ir sukurs darbalaukio nuorodą <b>„F1 Spejimai“</b> – vėliau paleiskite per ją. Atsidarys atskiras langas.</li>
+  <li><b>Atnaujinkite duomenis.</b> Kairėje paspauskite <b>„Atnaujinti duomenis“</b>. Programa parsisiųs naujausius
+      rezultatus, treniruočių laikus, orų prognozę ir lažybų rinkų kainas (apie 1 minutę).</li>
+  <li><b>Pasirinkite sesiją.</b> Viršuje – <b>Metai</b>, <b>Grand Prix</b> ir <b>Etapas</b>. Atidarius programą automatiškai
+      parenkama artimiausia sesija.</li>
+  <li><b>Perskaitykite siūlomą spėjimą.</b> Trys kortelės (1, 2, 3 vieta) – tai siūlomas trejetas. Prie kiekvieno
+      vairuotojo nurodyta, kokia tikimybė, kad jis bus tiksliai toje vietoje ir kad pateks į TOP3.</li>
+  <li><b>Spėkite kuo vėliau.</b> Taisyklės leidžia keisti spėjimą iki sesijos pradžios. Geriausia atnaujinti duomenis
+      ir pažiūrėti spėjimą likus 30–60 minučių iki sesijos – tada žinomi treniruočių laikai, starto rikiuotė,
+      naujausia orų prognozė ir lažybų kainos.</li>
+</ol>
+<div class="box"><b class="t">Patarimas</b>Prieš lenktynes modelis jau žino starto rikiuotę (kvalifikacijos rezultatą) –
+tai vienas svarbiausių signalų. Todėl lenktynių spėjimą verta žiūrėti po kvalifikacijos, ne prieš ją.</div>
+<p>Programą uždaryti: kairėje <b>„Išjungti programą“</b>. Jei tik uždarysite langą, programa liks veikti fone ir kitą kartą
+atsidarys akimirksniu.</p>
+</section>
+
+<section>
+<h2>3. Programos langas</h2>
+<h3>Skirtukas „Spėjimas“</h3>
+<img class="shot" src="img/spejimas.jpg">
+<p class="cap">Spėjimo skirtukas: pasirinkimas, siūlomas trejetas, rodikliai ir trasos kortelė su žemėlapiu.</p>
+<table>
+  <tr><th style="width:32%">Dalis</th><th>Ką rodo</th></tr>
+  <tr><td>Siūlomas spėjimas</td><td>Trejetas su daugiausiai tikėtinų taškų. Spalvota juosta – komandos spalva.</td></tr>
+  <tr><td>Tikėtini taškai</td><td>Kiek taškų vidutiniškai atneštų šis spėjimas (iš 6). Įprastai 2–3.</td></tr>
+  <tr><td>Lietaus tikimybė</td><td>Ar lis sesijos metu. Įvykusioms sesijoms – faktas iš trasos jutiklių.</td></tr>
+  <tr><td>Trasos kortelė</td><td>Trasos žemėlapis (raudona žymė – starto/finišo linija, skaičiai – posūkiai), padangų
+      apkrova, lenkimo sunkumas (1–5) ir panašiausios trasos.</td></tr>
+  <tr><td>Tikimybės</td><td>Kiekvieno vairuotojo tikimybė būti P1, P2, P3 ir TOP3.</td></tr>
+  <tr><td>Kodėl?</td><td>Iš ko susideda vairuotojo „stiprumas“ – kiek prideda forma, starto vieta, lažybų rinka ir t. t.
+      Vairuotojai surikiuoti kaip tikimybių lentelėje.</td></tr>
+  <tr><td>Išsaugoti spėjimą</td><td>Mygtukas šalia etapo pavadinimo: įrašo spėjimą į duomenų bazę.</td></tr>
+</table>
+<div class="box"><b class="t">Kalba</b>Kairėje juostoje viršuje – kalbos pasirinkimas (lietuvių / English). Pasirinkimas
+įsimenamas. Visi tekstai laikomi duomenų bazėje, juos galima taisyti skirtuke „Duomenys“ → „Vertimai“.</div>
+<p>Pasirinkus jau įvykusią sesiją, modelis spėja <b>tik su tais duomenimis, kurie buvo žinomi prieš ją</b>, ir parodo
+tikrą rezultatą bei kiek taškų spėjimas būtų pelnęs. Taip galima patikrinti modelį bet kuriame etape nuo 2023 m.</p>
+
+<h3>Kiti skirtukai</h3>
+<table>
+  <tr><th style="width:22%">Skirtukas</th><th>Kam skirtas</th></tr>
+  <tr><td>Požymiai</td><td>Visi veiksniai, į kuriuos atsižvelgia modelis, jų išmokti svoriai ir slankikliai, kuriais galite
+      sustiprinti ar susilpninti veiksnio įtaką (1 = kaip išmokta, 0 = neatsižvelgti).</td></tr>
+  <tr><td>Sezono testas</td><td>Atkuria visą sezoną: kiek taškų modelis būtų surinkęs kiekvienoje sesijoje.</td></tr>
+  <tr><td>SQL</td><td>Duomenų bazės peržiūra: pavyzdinės užklausos, visos lentelės. Tik skaitymui – nieko sugadinti negalima.</td></tr>
+  <tr><td>Parametrai</td><td>Visų nustatymų ir svorių suvestinė (tas pats, kas faile PARAMETRAI.md).</td></tr>
+  <tr><td>Duomenys</td><td>Žinynai: trasų charakteristikos, komandų spalvos, žaidėjai, sąsajos vertimai ir kalbos.
+      Juos galima redaguoti.</td></tr>
+</table>
+</section>
+
+<section>
+<h3 style="margin-top:0">Skirtukas „Požymiai“</h3>
+<img class="shot" src="img/pozymiai.jpg">
+<p class="cap">Kiekvienas veiksnys su paaiškinimu, išmoktu svoriu kvalifikacijai ir lenktynėms bei daugikliu.</p>
+<h3>Skirtukas „Duomenys“</h3>
+<img class="shot" src="img/duomenys.jpg">
+<p class="cap">Žinynų redagavimas. Pakeitus, pavyzdžiui, trasos lenkimo sunkumą, modelis persimoko automatiškai.</p>
+</section>
+
+<section>
+<h2>4. Kaip modelis spėja – paprastai</h2>
+<p>Modelio darbą galima palyginti su patyrusiu F1 žinovu, kuris prieš kiekvieną sesiją peržiūri daugybę faktų, kiekvienam
+suteikia tam tikrą svarbą ir tada daug kartų „mintyse perleidžia“ sesiją.</p>
+<ol class="steps">
+  <li><b>Surenka faktus apie kiekvieną vairuotoją</b> (žr. lentelę žemiau): forma, starto vieta, treniruočių tempas,
+      lažybų rinka, orai, trasos ypatybės.</li>
+  <li><b>Kiekvienam faktui suteikia svorį.</b> Svoriai nėra parinkti ranka – modelis juos <b>išmoksta iš istorijos</b>
+      (2024–2026 m. sesijų): kurie faktai praeityje geriausiai nuspėjo, kas pateks į TOP3.</li>
+  <li><b>Apskaičiuoja vairuotojo „stiprumą“</b> – faktų ir jų svorių sumą.</li>
+  <li><b>20 000 kartų „perleidžia“ sesiją</b> kompiuteryje: stipresnis vairuotojas dažniau laimi, bet dalyvauja ir atsitiktinumas
+      (klaidos, gedimai, strategijos). Lyjant atsitiktinumo daugiau. Taip gaunamos tikimybės P1, P2, P3.</li>
+  <li><b>Parenka geriausią trejetą</b> pagal mūsų taškų sistemą: perrenkami visi trejetai ir imamas tas,
+      kuris vidutiniškai atneša daugiausiai taškų.</li>
+</ol>
+<h3>Į ką atsižvelgiama</h3>
+<table>
+  <tr><th style="width:30%">Veiksnys</th><th>Ką reiškia</th></tr>
+  <tr><td>Lažybų rinka</td><td>Kokią tikimybę laimėti, patekti į podiumą ar TOP5 vairuotojui skiria lažybų biržos
+      (Kalshi, Polymarket) prieš pat sesiją. Viena stipriausių žinių.</td></tr>
+  <tr><td>Savaitgalio rezultatai</td><td>Lenktynėms – starto vieta; kvalifikacijai – ankstesnės šio savaitgalio sesijos.</td></tr>
+  <tr><td>Sezono forma</td><td>Rezultatai šiame sezone (naujausi svarbesni).</td></tr>
+  <tr><td>Treniruočių tempas</td><td>Šio savaitgalio treniruočių laikai (lietingos treniruotės vertinamos atsargiau).</td></tr>
+  <tr><td>Praėjęs sezonas</td><td>Kaip vairuotojui sekėsi pernai.</td></tr>
+  <tr><td>Trasos istorija ir panašios trasos</td><td>Kaip vairuotojui sekasi šioje ir panašiose trasose.</td></tr>
+  <tr><td>Lietus ir temperatūra</td><td>Kaip vairuotojui sekasi lyjant / karštyje, padauginta iš orų prognozės.</td></tr>
+  <tr><td>Strategija</td><td>Padangų dėvėjimasis ilgose serijose ir kaip sunku trasoje aplenkti.</td></tr>
+</table>
+<div class="box"><b class="t">Pavyzdys</b>2026 m. Kuala Lumpuro lenktynės: VER startuoja iš pole pozicijos, lažybų rinka jam
+duoda 57 % laimėti. Modelis apskaičiuoja: VER P1 – 35 %, TOP3 – 78 %. Siūlomas spėjimas VER – HAM – ANT
+(tikėtini 2,3 taško). Kadangi prognozuojamas lietus (97 %), visų tikimybės „suspaustos“ – rezultatas mažiau nuspėjamas.</div>
+</section>
+
+<section>
+<h2>5. Iš kur imami duomenys</h2>
+<table>
+  <tr><th style="width:24%">Šaltinis</th><th>Kas</th><th style="width:26%">Kada</th></tr>
+  <tr><td>Oficialus F1 laiko sekimas (FastF1)</td><td>Rezultatai, starto vietos, treniruočių ratai, trasų žemėlapiai</td>
+      <td>Šis sezonas, po kiekvienos sesijos</td></tr>
+  <tr><td>Ergast / Jolpica archyvas</td><td>2023–2025 m. rezultatai</td><td>Vieną kartą</td></tr>
+  <tr><td>Trasos jutikliai (FastF1)</td><td>Ar trasoje tikrai lijo, temperatūra</td><td>Po kiekvienos sesijos</td></tr>
+  <tr><td>Open-Meteo</td><td>Orų prognozė trasai ir 15 km aplink</td><td>Kiekvieną atnaujinimą</td></tr>
+  <tr><td>Kalshi, Polymarket</td><td>Lažybų biržų kainos (= tikimybės)</td><td>Kiekvieną atnaujinimą</td></tr>
+  <tr><td>Lažybininkai (bet365 ir kt.)</td><td>Nugalėtojo koeficientai</td><td>Kas savaitę (tik atsarginis)</td></tr>
+</table>
+<p>Programoje jau yra 2023–2026 m. duomenys (aplankas <code>programa/pradiniai_duomenys</code>), todėl ji veikia iškart;
+mygtukas „Atnaujinti duomenis“ parsiunčia tai, kas nauja.</p>
+<h3>Orai: kodėl prognozė „kalibruojama“</h3>
+<p>Orų prognozės dažnai rodo didelę lietaus tikimybę, nors trasoje taip ir nepalyja (ypač tropikuose). Todėl programa
+palygino daugiau nei 400 praeities sesijų prognozes su tuo, ką iš tikrųjų užfiksavo trasos jutikliai, ir išmoko, kurie
+prognozės rodikliai tikrai pranašauja lietų (svarbiausias – prognozuojamas kritulių kiekis regione). Taip prognozės
+paklaida sumažėjo 45 %.</p>
+<h3>Lažybų rinka</h3>
+<p>Biržų kainos atspindi tūkstančių žmonių nuomonę ir naujausią informaciją. Modelis ima paskutinę kainą prieš sesiją ir
+sujungia ją su kitais veiksniais. Kiek pasitikėti rinka, modelis išmoksta pats: bandyta rinkai suteikti dar daugiau svorio
+(×1,5, ×2, be apribojimų), tačiau visais atvejais rezultatai pablogėjo – todėl paliktas išmoktas svoris.</p>
+</section>
+
+<section>
+<h2>6. Kiek modelis tikslus</h2>
+<p>Modelis tikrinamas sąžiningai: kiekvienai praeities sesijai jis spėja <b>tik su tais duomenimis, kurie buvo žinomi prieš ją</b>,
+ir rezultatas palyginamas su tikru. 2026 m. sezone (iki Kuala Lumpuro) modelis surinko <b>113 taškų</b> – daugiau nei
+bet kuris mūsų totalizatoriaus žaidėjas.</p>
+<p>2025–2026 m. (101 sesija) modelis vidutiniškai surenka <b>apie 3 taškus iš 6</b> per sesiją. Tiksliai atspėti visą TOP3
+pavyksta retai: net lažybų rinkos favoritas laimi tik apie 45 % sesijų. Reali viršutinė riba – maždaug 3,2–3,4 taško per
+sesiją, nes F1 rezultatams didelę įtaką daro atsitiktinumas (avarijos, gedimai, saugos automobilis, lietus).</p>
+<h3>Kas išbandyta ir atmesta</h3>
+<p>Kiekvienas pakeitimas patikrinamas su visomis sesijomis ir paliekamas tik jei pagerina rezultatą. Atmesta: didesnis
+lažybų rinkos svoris, „idealaus rato“ ir kvalifikacijos simuliacijos rodikliai, atskiras P2/P3 atsitiktinumas.</p>
+</section>
+
+<section>
+<h2>7. Automatinis spėjimas prieš sesiją</h2>
+<p>Įjungus automatinį režimą, kompiuteris kas 15 minučių patikrina, ar artėja sesija. Likus ~40 minučių iki sesijos jis
+pats atnaujina duomenis, paruošia spėjimą ir parodo <b>Windows pranešimą</b>, pvz.:</p>
+<div class="box">F1: Bahrain – Lenktynės<br>VER – HAM – ANT (tikėtini taškai 2.4, lietus 98 %, pradžia 10:00)</div>
+<p>Įjungti: aplanke <code>programa</code> dukart spustelėkite <code>automatinis_ijungti.bat</code>.
+Išjungti: <code>automatinis_isjungti.bat</code>. Veikia tik kai kompiuteris įjungtas.</p>
+
+<h2 style="margin-top:22px">8. Dažni klausimai</h2>
+<table>
+  <tr><th style="width:36%">Klausimas</th><th>Atsakymas</th></tr>
+  <tr><td>Programa neatsidaro</td><td>Palaukite 20 s ir spustelėkite nuorodą dar kartą. Jei nepadeda – paleiskite
+      <code>programa\idiegti.bat</code>.</td></tr>
+  <tr><td>Duomenys neatsinaujina</td><td>Oficialūs šaltiniai riboja užklausų skaičių. Pabandykite po valandos – trūkstami
+      duomenys bus parsiųsti automatiškai.</td></tr>
+  <tr><td>Pirmas paleidimas nepavyko</td><td>Paleiskite <code>programa\idiegti.bat</code> ir perskaitykite pranešimą. Dažniausiai
+      trūksta Python – atsisiųskite jį iš python.org (pažymėkite „Add python.exe to PATH“).</td></tr>
+  <tr><td>Noriu, kad modelis mažiau žiūrėtų į kažką</td><td>Skirtuke „Požymiai“ sumažinkite daugiklį ir paspauskite
+      „Išsaugoti“.</td></tr>
+  <tr><td>Nesutinku su trasos įvertinimu</td><td>Skirtuke „Duomenys“ pasirinkite žinyną „Trasos“, pakeiskite reikšmę ir
+      išsaugokite.</td></tr>
+  <tr><td>Kodėl modelis siūlo ne favoritą?</td><td>Trejetas parenkamas pagal tikėtinus taškus. Žr. „Kodėl?“ grafiką
+      ir tikimybių lentelę.</td></tr>
+</table>
+</section>
+
+<section>
+<h2>9. Techninė dalis</h2>
+<p>Skirta tam, kas norės programą keisti ar plėsti.</p>
+<h3>Aplankai</h3>
+<table>
+  <tr><th style="width:30%">Kelias</th><th>Paskirtis</th></tr>
+  <tr><td>F1 Spėjimai.vbs</td><td>Paleidimas (naudoja darbalaukio nuoroda)</td></tr>
+  <tr><td>PARAMETRAI.md, parametrai.json</td><td>Svorių suvestinė ir keičiami nustatymai</td></tr>
+  <tr><td>Dokumentacija.pdf</td><td>Šis dokumentas (šaltinis: <code>programa/docs</code>)</td></tr>
+  <tr><td>duomenys/</td><td>Jūsų duomenų bazė <code>f1.db</code>, F1 talpykla, orų kalibracija (sukuriama pirmą kartą)</td></tr>
+  <tr><td>programa/pradiniai_duomenys/</td><td>Pradinė duomenų bazė naujam vartotojui</td></tr>
+  <tr><td>programa/idiegti.bat</td><td>Diegimas: Python aplinka, bibliotekos, darbalaukio nuoroda</td></tr>
+  <tr><td>programa/f1model/</td><td>Modelio kodas</td></tr>
+  <tr><td>programa/tests/</td><td>Automatiniai testai (<code>testai.bat</code>)</td></tr>
+</table>
+<h3>Architektūra</h3>
+<table>
+  <tr><th style="width:30%">Modulis</th><th>Atsakomybė</th></tr>
+  <tr><td>app.py</td><td>Kompozicijos šaknis – vienintelė vieta, kur kuriamos priklausomybės (duomenų bazė, nustatymai,
+      žinynai, šaltiniai). Testai sukuria App su laikina duomenų baze.</td></tr>
+  <tr><td>features.py</td><td>Požymių registras: kiekvienas veiksnys – funkcija su <code>@feature</code>. Naujas veiksnys
+      pridedamas viena funkcija.</td></tr>
+  <tr><td>model.py</td><td>Plackett-Luce modelis: svorių mokymas, simuliacija, geriausias trejetas.</td></tr>
+  <tr><td>sources/</td><td>Duomenų šaltiniai (DataSource klasės): oficialūs duomenys, trasų žemėlapiai, orai, lažybos.</td></tr>
+  <tr><td>db.py, reference.py</td><td>Duomenų bazė ir žinynai (trasos, komandos, žaidėjai...). Lentelė
+      <code>duomenu_versija</code> (trigeriai) rodo, kada pasikeitė modelio duomenys – tik tada modelis persimoko.</td></tr>
+  <tr><td>i18n.py, translations.py</td><td>Vertimai: <code>TranslationRepository</code> (DB lentelės <code>kalbos</code>,
+      <code>vertimai</code>), <code>Translator</code> (tekstas pagal raktą, trūkstami – lietuviškai), pradiniai tekstai.
+      Paleidžiant įrašomi tik trūkstami raktai, todėl programoje pataisyti tekstai išlieka.</td></tr>
+  <tr><td>preferences.py</td><td>Programos pasirinkimai (pvz. kalba), DB lentelė <code>nustatymai</code>.</td></tr>
+  <tr><td>ui.py, ui_style.py, cli.py</td><td>Programos langas, jo išvaizda (be tekstų – juos perduoda ui.py), komandinė eilutė.</td></tr>
+</table>
+<h3>Nauja kalba ar naujas tekstas</h3>
+<p>Naujas tekstas: raktas su vertimais į <code>translations.py</code> ir <code>t("raktas")</code> sąsajoje. Nauja kalba:
+eilutė žinyne „Kalbos“ ir vertimai žinyne „Vertimai“ (arba <code>translations.py</code>); kodo keisti nereikia.</p>
+<h3>Taisyklė keičiant modelį</h3>
+<p>Po kiekvieno pakeitimo: paleisti <code>testai.bat</code>, atlikti sezono testą ir palyginti modelio taškus su ankstesniu rezultatu;
+pakeitimas paliekamas tik jei modelis neblogėja. Po pakeitimų atnaujinti šią dokumentaciją:
+<code>.venv\Scripts\python docs\build_pdf.py</code>.</p>
+</section>
+
+</body>
+</html>

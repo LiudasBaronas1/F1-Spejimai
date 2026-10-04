@@ -1,0 +1,42 @@
+{
+  "_paaiskinimas": "Čia galite keisti modelio parametrus. Pilnas aprašymas – PARAMETRAI.md. Daugikliai: 1 = kaip išmokta iš duomenų, 0.5 = perpus mažiau, 0 = neatsižvelgti, 2 = dvigubai daugiau. Pakeitę išsaugokite failą ir programoje paspauskite 'Atnaujinti duomenis' (arba perkraukite programą).",
+  "pozymiu_daugikliai": {
+    "form": 1.0,
+    "prev_season": 1.0,
+    "track": 1.0,
+    "similar": 1.0,
+    "pace": 1.0,
+    "weekend": 1.0,
+    "wet": 1.0,
+    "heat": 1.0,
+    "tyre_deg": 1.0,
+    "overtake": 1.0,
+    "market": 1.0,
+    "market_top3": 1.0,
+    "market_top5": 1.0
+  },
+  "nustatymai": {
+    "forma_pusejimo_sesijos": 3.0,
+    "metu_svoris_trasos_istorijoje": 0.7,
+    "trasos_istorijos_metai": 3,
+    "lietaus_chaosas": 0.35,
+    "lietinga_sesija_nuo": 0.5,
+    "sio_sezono_svarba_mokantis": 2.0,
+    "mokymosi_sezonai": [
+      2024,
+      2025,
+      2026
+    ],
+    "reguliarizacija": 0.1,
+    "simuliaciju_skaicius": 20000,
+    "be_reguliarizacijos": [],
+    "kvalifikacijos_tempo_matai": [
+      "best_lap_s"
+    ],
+    "lazybu_saltiniu_svoriai": {
+      "kalshi": 1.0,
+      "polymarket": 0.5,
+      "bookmakers": 0.0
+    }
+  }
+}

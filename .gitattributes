@@ -1,0 +1,8 @@
+* text=auto
+# Windows scenarijai turi turėti CRLF eilučių pabaigas (kitaip cmd.exe gali juos vykdyti klaidingai)
+*.bat text eol=crlf
+*.vbs text eol=crlf
+*.db binary
+*.ico binary
+*.jpg binary
+*.pdf binary
