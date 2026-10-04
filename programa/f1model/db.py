@@ -4,7 +4,13 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+
+# pandas/numpy skaičiai užklausų parametruose (kitaip SQLite juos įrašytų kaip baitus ir nerastų sutapimų)
+for _t in (np.int64, np.int32):
+    sqlite3.register_adapter(_t, int)
+sqlite3.register_adapter(np.float64, float)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
@@ -59,6 +65,25 @@ CREATE TABLE IF NOT EXISTS trasu_konturai (
     posukiai TEXT,                         -- JSON [[numeris, x, y], ...]
     sezonas INTEGER, etapas INTEGER);
 
+-- FIA DOKUMENTAI (sources/fia.py)
+CREATE TABLE IF NOT EXISTS atnaujinimai (
+    season INTEGER, round INTEGER, komanda TEXT,
+    nr INTEGER,                -- detalės nr. dokumente; 0 – komanda atnaujinimų neatvežė
+    detale TEXT, priezastis TEXT,   -- performance / circuit / reliability
+    aprasymas TEXT, PRIMARY KEY (season, round, komanda, nr));
+CREATE TABLE IF NOT EXISTS starto_rikiuote (
+    season INTEGER, round INTEGER, session TEXT, driver TEXT, grid INTEGER, dokumentas TEXT,
+    PRIMARY KEY (season, round, session, driver));
+CREATE TABLE IF NOT EXISTS fia_dokumentai (
+    tipas TEXT, season INTEGER, round INTEGER, url TEXT, gauta TEXT, PRIMARY KEY (tipas, season, round));
+
+-- NAUJIENOS (sources/news.py; šaltiniai ir temos – žinynai)
+CREATE TABLE IF NOT EXISTS naujienos (
+    url TEXT PRIMARY KEY, saltinis TEXT, pavadinimas TEXT, santrauka TEXT, paskelbta TEXT,
+    komandos TEXT, zymes TEXT, gauta TEXT);
+CREATE TABLE IF NOT EXISTS naujienu_saltiniai (pavadinimas TEXT PRIMARY KEY, adresas TEXT, aktyvus INTEGER DEFAULT 1);
+CREATE TABLE IF NOT EXISTS naujienu_zymes (zyme TEXT, raktazodis TEXT, PRIMARY KEY (zyme, raktazodis));
+
 -- SĄSAJA (pradinės reikšmės – translations.py)
 CREATE TABLE IF NOT EXISTS kalbos (kodas TEXT PRIMARY KEY, pavadinimas TEXT);
 CREATE TABLE IF NOT EXISTS vertimai (raktas TEXT, kalba TEXT, tekstas TEXT, PRIMARY KEY (raktas, kalba));
@@ -71,7 +96,8 @@ INSERT OR IGNORE INTO duomenu_versija VALUES (1, 0);
 
 # Lentelės, kurių pakeitimai NEKEIČIA modelio (jo paties išvestis, sąsaja). Visos kitos (ir naujos) – keičia.
 NOT_MODEL_INPUT = {"model_params", "predictions", "zaideju_spejimai", "trasu_konturai",
-                   "kalbos", "vertimai", "nustatymai", "duomenu_versija"}
+                   "kalbos", "vertimai", "nustatymai", "duomenu_versija",
+                   "fia_dokumentai", "naujienos", "naujienu_saltiniai", "naujienu_zymes", "atnaujinimai"}
 
 # Senesnių DB versijų atnaujinimas: (lentelė, stulpelis, tipas)
 NEW_COLUMNS = [("results", "official_position", "INTEGER"), ("weather", "region_rain_mm", "REAL"),
@@ -124,6 +150,10 @@ VIEWS = {
                ROUND(p.p_top3, 3) AS tikimybe_top3, r.position AS tikra_vieta
         FROM predictions p JOIN events e USING(season, round) LEFT JOIN results r USING(season, round, session, driver)
         WHERE p.pick_pos IS NOT NULL""",
+    "v_atnaujinimai": """
+        SELECT a.season AS metai, a.round AS etapas, e.name AS grand_prix, a.komanda, a.nr, a.detale,
+               a.priezastis, a.aprasymas
+        FROM atnaujinimai a JOIN events e USING(season, round)""",
 }
 
 TABLE_INFO = {
@@ -143,6 +173,12 @@ TABLE_INFO = {
     "gp_pavadinimai": "Žinynas: Excel GP pavadinimas -> FastF1 pavadinimo dalis",
     "vairuotoju_vardai": "Žinynas: vardai lažybų rinkose -> vairuotojo trumpinys",
     "trasu_konturai": "Trasų žemėlapiai: kontūras ir posūkiai (iš greičiausio kvalifikacijos rato)",
+    "atnaujinimai": "FIA: komandų atvežtos naujos bolido detalės kiekvienam etapui (2024+)",
+    "starto_rikiuote": "FIA: oficiali starto rikiuotė su baudomis (artėjančioms lenktynėms ir sprintams)",
+    "fia_dokumentai": "Jau apdoroti FIA dokumentai",
+    "naujienos": "F1 naujienos iš patikimų šaltinių su komandų ir temų žymėmis",
+    "naujienu_saltiniai": "Žinynas: naujienų šaltiniai (RSS)",
+    "naujienu_zymes": "Žinynas: naujienų temos ir jų raktažodžiai",
     "kalbos": "Sąsajos kalbos (kodas -> pavadinimas)",
     "vertimai": "Sąsajos tekstai kiekviena kalba (raktas, kalba, tekstas)",
     "nustatymai": "Programos pasirinkimai, pvz. sąsajos kalba",
@@ -152,7 +188,8 @@ TABLE_INFO = {
                                  ("v_treniruotes", "Treniruočių tempas su GP pavadinimu"),
                                  ("v_vairuotojai", "Vairuotojų sezono suvestinė"),
                                  ("v_koeficientai", "Lažybų tikimybės ir koeficientai šalia rezultato"),
-                                 ("v_modelio_spejimai", "Modelio spėjimai palyginti su tikru rezultatu")]},
+                                 ("v_modelio_spejimai", "Modelio spėjimai palyginti su tikru rezultatu"),
+                                 ("v_atnaujinimai", "Bolidų atnaujinimai su GP pavadinimu")]},
 }
 
 
@@ -187,10 +224,13 @@ class Database:
                 con.execute(f"DROP VIEW IF EXISTS {name}")
                 con.execute(create)
         tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
-        for table in set(tables) - NOT_MODEL_INPUT:
+        for table in tables:
             for op in ("INSERT", "UPDATE", "DELETE"):
-                con.execute(f"CREATE TRIGGER IF NOT EXISTS {table}_{op.lower()}_versija AFTER {op} ON {table} "
-                            f"BEGIN UPDATE duomenu_versija SET n = n + 1; END")
+                if table in NOT_MODEL_INPUT:  # jei lentelė vėliau tapo „ne modelio“ – trigerį pašaliname
+                    con.execute(f"DROP TRIGGER IF EXISTS {table}_{op.lower()}_versija")
+                else:
+                    con.execute(f"CREATE TRIGGER IF NOT EXISTS {table}_{op.lower()}_versija AFTER {op} ON {table} "
+                                f"BEGIN UPDATE duomenu_versija SET n = n + 1; END")
 
     def mtime(self):
         return self.path.stat().st_mtime if self.path.exists() else 0

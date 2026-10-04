@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from . import config, features, reference, settings, sources, translations
+from .briefing import Briefing
 from .dataset import Dataset
 from .db import Database
 from .excel import ExcelPicks
@@ -60,6 +61,9 @@ class App:
         """Ar yra asmeninė žaidėjų spėjimų lentelė (be jos su žaidėjais susijusios dalys nerodomos)."""
         return self.excel_path.exists()
 
+    def briefing(self):
+        return Briefing(self.db, self.reference())
+
     def preferences(self):
         return Preferences(self.db)
 
@@ -71,6 +75,13 @@ class App:
         repo = self.translations()
         lang = lang or self.preferences().get("kalba", DEFAULT_LANGUAGE)
         return Translator.load(repo, lang if lang in repo.languages() else DEFAULT_LANGUAGE)
+
+    def save_reference(self, table, rows):
+        """Perrašo žinyną. Pakeitus komandas ar naujienų temas – naujienos pažymimos iš naujo."""
+        self.db.write(table, rows, replace_where=("1=1", ()))
+        if table in ("komandos", "naujienu_zymes"):
+            from .sources.news import NewsSource
+            NewsSource(self.db, self.reference()).retag()
 
     def default_rows(self, table):
         """Žinyno pradinės eilutės (mygtukui „Pradinės reikšmės“)."""

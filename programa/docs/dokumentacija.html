@@ -120,6 +120,9 @@ atsidarys akimirksniu.</p>
   <tr><td>Kodėl?</td><td>Iš ko susideda vairuotojo „stiprumas“ – kiek prideda forma, starto vieta, lažybų rinka ir t. t.
       Vairuotojai surikiuoti kaip tikimybių lentelėje.</td></tr>
   <tr><td>Išsaugoti spėjimą</td><td>Mygtukas šalia etapo pavadinimo: įrašo spėjimą į duomenų bazę.</td></tr>
+  <tr><td>Svarbu šiam etapui</td><td>Po trasos kortele: FIA starto baudos (kas startuoja toliau nei kvalifikavosi),
+      kurios komandos atvežė naujų detalių ir svarbios naujienos (baudos, variklis, vairuotojai, orai) apie pirmaujančias
+      komandas.</td></tr>
 </table>
 <div class="box"><b class="t">Kalba</b>Kairėje juostoje viršuje – kalbos pasirinkimas (lietuvių / English). Pasirinkimas
 įsimenamas. Visi tekstai laikomi duomenų bazėje, juos galima taisyti skirtuke „Duomenys“ → „Vertimai“.</div>
@@ -129,6 +132,11 @@ tikrą rezultatą bei kiek taškų spėjimas būtų pelnęs. Taip galima patikri
 <h3>Kiti skirtukai</h3>
 <table>
   <tr><th style="width:22%">Skirtukas</th><th>Kam skirtas</th></tr>
+  <tr><td>Atnaujinimai</td><td>Kiekvienos komandos naujos bolido detalės kiekvienam etapui iš oficialių FIA dokumentų
+      („Car Presentation Submissions“, 2024+): detalė, paskirtis (našumas / trasai / patikimumas) ir aprašymas, bei
+      sezono apžvalga – kas ir kada atvežė daugiausiai naujovių.</td></tr>
+  <tr><td>Naujienos</td><td>Naujienos iš formula1.com, Autosport, Motorsport.com, RaceFans ir BBC, automatiškai pažymėtos
+      komandomis ir temomis (atnaujinimai, baudos, variklis, vairuotojai, orai, taisyklės, padangos). Filtrai ir paieška.</td></tr>
   <tr><td>Požymiai</td><td>Visi veiksniai, į kuriuos atsižvelgia modelis, jų išmokti svoriai ir slankikliai, kuriais galite
       sustiprinti ar susilpninti veiksnio įtaką (1 = kaip išmokta, 0 = neatsižvelgti).</td></tr>
   <tr><td>Sezono testas</td><td>Atkuria visą sezoną: kiek taškų modelis būtų surinkęs kiekvienoje sesijoje.</td></tr>
@@ -143,6 +151,9 @@ tikrą rezultatą bei kiek taškų spėjimas būtų pelnęs. Taip galima patikri
 <h3 style="margin-top:0">Skirtukas „Požymiai“</h3>
 <img class="shot" src="img/pozymiai.jpg">
 <p class="cap">Kiekvienas veiksnys su paaiškinimu, išmoktu svoriu kvalifikacijai ir lenktynėms bei daugikliu.</p>
+<h3>Skirtukas „Atnaujinimai“</h3>
+<img class="shot" src="img/atnaujinimai.jpg">
+<p class="cap">Komandų naujos bolido detalės pasirinktam etapui iš oficialių FIA dokumentų.</p>
 <h3>Skirtukas „Duomenys“</h3>
 <img class="shot" src="img/duomenys.jpg">
 <p class="cap">Žinynų redagavimas. Pakeitus, pavyzdžiui, trasos lenkimo sunkumą, modelis persimoko automatiškai.</p>
@@ -192,6 +203,10 @@ duoda 57 % laimėti. Modelis apskaičiuoja: VER P1 – 35 %, TOP3 – 78 %. Siū
   <tr><td>Open-Meteo</td><td>Orų prognozė trasai ir 15 km aplink</td><td>Kiekvieną atnaujinimą</td></tr>
   <tr><td>Kalshi, Polymarket</td><td>Lažybų biržų kainos (= tikimybės)</td><td>Kiekvieną atnaujinimą</td></tr>
   <tr><td>Lažybininkai (bet365 ir kt.)</td><td>Nugalėtojo koeficientai</td><td>Kas savaitę (tik atsarginis)</td></tr>
+  <tr><td>FIA dokumentai (fia.com)</td><td>Bolidų atnaujinimai; oficiali starto rikiuotė su baudomis</td>
+      <td>Kiekvieną atnaujinimą (savaitgalio metu)</td></tr>
+  <tr><td>Naujienų šaltiniai (RSS)</td><td>formula1.com, Autosport, Motorsport.com, RaceFans, BBC</td>
+      <td>Kiekvieną atnaujinimą</td></tr>
 </table>
 <p>Programoje jau yra 2023–2026 m. duomenys (aplankas <code>programa/pradiniai_duomenys</code>), todėl ji veikia iškart;
 mygtukas „Atnaujinti duomenis“ parsiunčia tai, kas nauja.</p>
@@ -200,6 +215,10 @@ mygtukas „Atnaujinti duomenis“ parsiunčia tai, kas nauja.</p>
 palygino daugiau nei 400 praeities sesijų prognozes su tuo, ką iš tikrųjų užfiksavo trasos jutikliai, ir išmoko, kurie
 prognozės rodikliai tikrai pranašauja lietų (svarbiausias – prognozuojamas kritulių kiekis regione). Taip prognozės
 paklaida sumažėjo 45 %.</p>
+<h3>Starto baudos</h3>
+<p>Lenktynių spėjimui labai svarbi starto vieta. Kol lenktynės neįvyko, programa ima <b>oficialią FIA starto rikiuotę</b>
+(su baudomis už variklio elementus, susidūrimus ir pan.), o ne vien kvalifikacijos rezultatą. Pvz. 2026 m. Kuala Lumpure
+HAD kvalifikavosi 3-as, bet dėl baudos startavo 8-as – modelis tai žino.</p>
 <h3>Lažybų rinka</h3>
 <p>Biržų kainos atspindi tūkstančių žmonių nuomonę ir naujausią informaciją. Modelis ima paskutinę kainą prieš sesiją ir
 sujungia ją su kitais veiksniais. Kiek pasitikėti rinka, modelis išmoksta pats: bandyta rinkai suteikti dar daugiau svorio
@@ -216,7 +235,9 @@ pavyksta retai: net lažybų rinkos favoritas laimi tik apie 45 % sesijų. Reali
 sesiją, nes F1 rezultatams didelę įtaką daro atsitiktinumas (avarijos, gedimai, saugos automobilis, lietus).</p>
 <h3>Kas išbandyta ir atmesta</h3>
 <p>Kiekvienas pakeitimas patikrinamas su visomis sesijomis ir paliekamas tik jei pagerina rezultatą. Atmesta: didesnis
-lažybų rinkos svoris, „idealaus rato“ ir kvalifikacijos simuliacijos rodikliai, atskiras P2/P3 atsitiktinumas.</p>
+lažybų rinkos svoris, „idealaus rato“ ir kvalifikacijos simuliacijos rodikliai, atskiras P2/P3 atsitiktinumas,
+<b>bolidų atnaujinimų skaičius</b> (2025–2026 m. 296 tšk. vs 300 be jo – atnaujinimai rodomi tik kaip informacija;
+jų poveikį lažybų rinka ir treniruočių tempas jau atspindi).</p>
 </section>
 
 <section>
@@ -268,7 +289,9 @@ Išjungti: <code>automatinis_isjungti.bat</code>. Veikia tik kai kompiuteris įj
   <tr><td>features.py</td><td>Požymių registras: kiekvienas veiksnys – funkcija su <code>@feature</code>. Naujas veiksnys
       pridedamas viena funkcija.</td></tr>
   <tr><td>model.py</td><td>Plackett-Luce modelis: svorių mokymas, simuliacija, geriausias trejetas.</td></tr>
-  <tr><td>sources/</td><td>Duomenų šaltiniai (DataSource klasės): oficialūs duomenys, trasų žemėlapiai, orai, lažybos.</td></tr>
+  <tr><td>sources/</td><td>Duomenų šaltiniai (DataSource klasės): oficialūs duomenys, trasų žemėlapiai, orai, lažybos,
+      FIA dokumentai (<code>fia.py</code>: atnaujinimai ir starto rikiuotė iš PDF), naujienos (<code>news.py</code>, RSS).</td></tr>
+  <tr><td>briefing.py</td><td>Informacija sąsajai: komandų atnaujinimai, naujienų paieška, svarbiausi etapo faktai.</td></tr>
   <tr><td>db.py, reference.py</td><td>Duomenų bazė ir žinynai (trasos, komandos, žaidėjai...). Lentelė
       <code>duomenu_versija</code> (trigeriai) rodo, kada pasikeitė modelio duomenys – tik tada modelis persimoko.</td></tr>
   <tr><td>i18n.py, translations.py</td><td>Vertimai: <code>TranslationRepository</code> (DB lentelės <code>kalbos</code>,

@@ -254,8 +254,11 @@ def weekend(ctx):
     wk = ctx.weekend_results
     if ctx.kind == "race":
         tgt = ctx.data.results_of(ctx.season, ctx.rnd, ctx.session)
+        fia_grid = ctx.data.fia_grid(ctx.season, ctx.rnd, ctx.session)
         if not tgt.empty and tgt.grid.notna().any():
             grid = tgt.set_index("driver").grid
+        elif fia_grid:  # oficiali FIA rikiuotė su baudomis (lenktynės dar nevyko)
+            grid = pd.Series(fia_grid)
         else:
             grid = wk[wk.session == ("Q" if ctx.session == "R" else "SQ")].set_index("driver").position
         return ctx.nan() if grid.empty else -grid.reindex(ctx.drivers).astype(float).fillna(20)
@@ -313,6 +316,9 @@ def tyre_deg(ctx):
 def overtake(ctx):
     return weekend(ctx) if _is_race(ctx) else ctx.nan()
 
+
+# Išbandyta ir atmesta (2026-10): „Bolido atnaujinimai“ (FIA Car Presentation, našumo detalių skaičius šiame
+# etape arba per 3 etapus) – 2025–2026 m. 296/295 tšk. vs 300 be jo. Atnaujinimai rodomi tik kaip informacija.
 
 MARKET_FOR = {"Q": "pole", "SQ": "pole", "R": "win", "S": "win"}
 

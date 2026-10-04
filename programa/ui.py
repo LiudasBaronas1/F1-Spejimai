@@ -46,7 +46,7 @@ SQL_EXAMPLES = {  # raktas -> užklausa; pavadinimas – vertimas „sql.example
     "model": "SELECT * FROM v_modelio_spejimai\nORDER BY sukurta DESC\nLIMIT 50;",
 }
 REFERENCE_TABLES = ["trasos", "trasu_sinonimai", "komandos", "zaidejai", "gp_pavadinimai", "vairuotoju_vardai",
-                    "vertimai", "kalbos"]
+                    "naujienu_saltiniai", "naujienu_zymes", "vertimai", "kalbos"]
 # Žinynai, lentelės ir SQL pavyzdžiai, susiję su asmenine totalizatoriaus Excel lentele – rodomi tik jei ji yra
 EXCEL_ONLY = {"zaidejai", "gp_pavadinimai", "zaideju_spejimai", "players"}
 
@@ -86,6 +86,48 @@ def local(iso, fmt="%m-%d %H:%M"):
 def version(app):
     """Keičiasi tik pasikeitus modelio duomenims arba Excel failui (ne kalbai ar išsaugotam spėjimui)."""
     return app.db.data_version(), app.excel_path.stat().st_mtime if app.excel_path.exists() else 0
+
+
+def news_rows(df, team_names, summary_len=None):
+    """Naujienų DataFrame -> eilutės ui.news_list (komandų žymės – komandos spalva)."""
+    rows = []
+    for _, n in df.iterrows():
+        keys = [k for k in (n.komandos or "").split(",") if k]
+        tags = [k for k in (n.zymes or "").split(",") if k]
+        summary = n.santrauka or ""
+        if summary_len and len(summary) > summary_len:
+            summary = summary[:summary_len].rsplit(" ", 1)[0] + "…"
+        rows.append(dict(title=n.pavadinimas, url=n.url, summary=summary,
+                         meta=f"{local(n.paskelbta, '%Y-%m-%d %H:%M')} · {n.saltinis}",
+                         chips=[(team_names.get(k, k), "", ref.team_color(team_names.get(k, k))) for k in keys]
+                         + [(t(f"newstag.{g}"), "tag", None) for g in tags]))
+    return rows
+
+
+def weekend_panel(season, rnd, session, ev, leaders, teams):
+    """Svarbu šiam etapui: FIA starto baudos, komandų atnaujinimai, svarbios naujienos apie pirmaujančias komandas."""
+    brief = app.briefing()
+    ui.section(t("weekend.title"), t("weekend.sub"))
+    if data.fia_grid(season, rnd, session):
+        changes = brief.grid_changes(data, season, rnd, session)
+        if changes:
+            ui.note(t("weekend.grid_title"), t("weekend.grid_text", changes=", ".join(
+                f"{d} P{q} → P{g}" for d, q, g in changes)))
+        else:
+            st.caption(t("weekend.grid_ok"))
+    ups = brief.upgrades(season, rnd)
+    if ups:
+        perf = [(f"{u.name} {u.counts['performance']}", "", u.color) for u in ups if u.counts["performance"]]
+        ui.label(t("weekend.upgrades"))
+        st.markdown(ui.chips(perf) or "–", unsafe_allow_html=True)
+    elif season >= 2024:
+        st.caption(t("weekend.no_upgrades"))
+    keys = {ref.team_key(teams.get(d)) for d in leaders} - {None}
+    news = brief.weekend_news(ev["date"], keys)
+    if news.empty:
+        st.caption(t("weekend.no_news"))
+    else:
+        ui.news_list(news_rows(news, {k: v[0] for k, v in brief.teams(season).items()}, summary_len=160))
 
 
 def save_language():
@@ -134,11 +176,12 @@ for f in features.names():  # slankiklių reikšmės pritaikomos prieš skaičiu
         S.multipliers[f] = float(st.session_state[f"mult_{f}"])
 
 ui.header(t("brand.accent"), t("brand.subtitle", season=SEASON))
-tabs = st.tabs([t(f"tab.{k}") for k in ("predict", "features", "backtest", "sql", "params", "data")])
+TABS = ("predict", "upgrades", "news", "features", "backtest", "sql", "params", "data")
+tab = dict(zip(TABS, st.tabs([t(f"tab.{k}") for k in TABS])))
 
 # ------------------------------------------------------------------ spėjimas
 
-with tabs[0]:
+with tab["predict"]:
     nr, ns = data.next_session((datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat())
     seasons = sorted(data.events.season.unique(), reverse=True)
     c0, c1, c2, c3 = st.columns([1, 3, 2, 1], vertical_alignment="bottom")
@@ -210,6 +253,7 @@ with tabs[0]:
             (t("track.similar"), ", ".join(c for c, _ in tc.most_similar(ev.circuit, 3)), None),
             (t("track.format"), t("track.sprint" if ev.format and "sprint" in ev.format else "track.conventional"),
              None)], t("track.no_map"))
+        weekend_panel(season, rnd, session, ev, out["table"].index[:8], teams)
 
     ui.section(t("section.why"), t("section.why_sub"))
     ch = 1.0 - S.wet_chaos * out["rain"]
@@ -218,7 +262,44 @@ with tabs[0]:
 
 # ------------------------------------------------------------------ požymiai
 
-with tabs[1]:
+with tab["upgrades"]:
+    brief = app.briefing()
+    st.write(t("upgrades.intro"))
+    up_seasons = [s for s in sorted(data.events.season.unique(), reverse=True) if brief.upgrade_rounds(s)]
+    if not up_seasons:
+        st.caption(t("upgrades.none_yet"))
+    else:
+        u0, u1, _ = st.columns([1, 3, 2], vertical_alignment="bottom")
+        up_season = u0.selectbox(t("predict.season"), up_seasons, key="up_season")
+        up_rounds = dict(brief.upgrade_rounds(up_season))
+        up_rnd = u1.selectbox(t("upgrades.round"), list(up_rounds)[::-1], format_func=lambda r: f"{r}. {up_rounds[r]}",
+                              key=f"up_round_{up_season}")
+        reasons = {r: t(f"reason.{r}") for r in ("performance", "circuit", "reliability")}
+        ui.section(t("upgrades.team_title"), t("upgrades.team_sub"))
+        ui.upgrade_cards(brief.upgrades(up_season, up_rnd), reasons, t("upgrades.empty"))
+        ui.section(t("upgrades.season_title"), t("upgrades.season_sub"))
+        ui.heat_table(brief.upgrade_matrix(up_season), t("col.team"), ref.team_color)
+        st.caption(t("upgrades.note"))
+
+with tab["news"]:
+    brief = app.briefing()
+    st.write(t("news.intro"))
+    team_names = {k: v[0] for k, v in brief.teams(SEASON).items()}
+    n0, n1, n2, n3, n4 = st.columns([2, 2, 2, 2, 1], vertical_alignment="bottom")
+    f_teams = n0.multiselect(t("news.teams"), list(team_names), format_func=team_names.get, placeholder=t("news.all"))
+    f_tags = n1.multiselect(t("news.tags"), brief.news_tags(), format_func=lambda g: t(f"newstag.{g}"),
+                            placeholder=t("news.all"))
+    f_src = n2.multiselect(t("news.sources"), brief.news_sources(), placeholder=t("news.all"))
+    f_text = n3.text_input(t("news.search"))
+    f_days = n4.selectbox(t("news.period"), [7, 30, 120], index=1, format_func=lambda n: t("news.days", n=n))
+    found = brief.news(f_days, f_teams, f_tags, f_src, f_text.strip())
+    st.caption(t("news.count", n=len(found)))
+    if found.empty:
+        st.caption(t("news.none"))
+    else:
+        ui.news_list(news_rows(found, team_names))
+
+with tab["features"]:
     (w_q, _), (w_r, _) = fitted["quali"], fitted["race"]
     s_q, s_r = (model.importance(model.effective_weights(w, S)) for w in (w_q, w_r))
     st.markdown(t("features.intro"))
@@ -250,7 +331,7 @@ with tabs[1]:
 
 # ------------------------------------------------------------------ sezono testas
 
-with tabs[2]:
+with tab["backtest"]:
     st.write(t("backtest.intro") + (" " + t("backtest.intro_players") if app.has_excel else ""))
     if st.button(t("backtest.run"), type="primary", help=t("backtest.run_help")):
         bar = st.progress(0.0)
@@ -270,7 +351,7 @@ with tabs[2]:
 
 # ------------------------------------------------------------------ SQL
 
-with tabs[3]:
+with tab["sql"]:
     left, right = st.columns([3, 1], gap="large")
     with right:
         ui.section(t("sql.tables"), t("sql.tables_sub"))
@@ -303,7 +384,7 @@ with tabs[3]:
 
 # ------------------------------------------------------------------ parametrai
 
-with tabs[4]:
+with tab["params"]:
     if t.lang != DEFAULT_LANGUAGE:
         st.caption(t("params.language_note"))
     if st.button(t("params.refresh")) or not app.report_path.exists():
@@ -312,19 +393,18 @@ with tabs[4]:
 
 # ------------------------------------------------------------------ duomenys ir žinynai
 
-with tabs[5]:
+with tab["data"]:
     ui.section(t("data.reference"), t("data.reference_sub"))
     table = st.selectbox(t("data.table"), visible(REFERENCE_TABLES), format_func=lambda k: t(f"reftable.{k}"))
     edited = st.data_editor(app.db.query(f"SELECT * FROM {table}"), num_rows="dynamic", width="stretch",
                             hide_index=True, key=f"edit_{table}")
     e1, e2, _ = st.columns([1, 1, 3])
     if e1.button(t("data.save"), type="primary", width="stretch"):
-        rows = edited.dropna(subset=[edited.columns[0]]).to_dict("records")
-        app.db.write(table, rows, replace_where=("1=1", ()))
+        app.save_reference(table, edited.dropna(subset=[edited.columns[0]]).to_dict("records"))
         st.cache_resource.clear()
         st.rerun()
     if e2.button(t("data.defaults"), help=t("data.defaults_help"), width="stretch"):
-        app.db.write(table, app.default_rows(table), replace_where=("1=1", ()))
+        app.save_reference(table, app.default_rows(table))
         st.cache_resource.clear()
         st.rerun()
     ui.section(t("data.collected"), t("data.collected_sub"))

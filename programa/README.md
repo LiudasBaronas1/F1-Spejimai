@@ -37,7 +37,9 @@ programa/
     ├── dataset.py         duomenys modeliui (+ nustatymai ir žinynai)
     ├── features.py        POŽYMIŲ REGISTRAS (@feature)
     ├── model.py           Plackett-Luce modelis
-    ├── sources/           DUOMENŲ ŠALTINIAI (DataSource): official, weather, odds, track_maps
+    ├── sources/           DUOMENŲ ŠALTINIAI (DataSource): official, weather, odds, track_maps,
+    │                      fia (atnaujinimai + starto rikiuotė iš FIA PDF), news (RSS naujienos)
+    ├── briefing.py        informacija sąsajai: atnaujinimai, naujienos, etapo faktai
     ├── automation.py, backtest.py, report.py, excel.py, config.py
 ```
 
@@ -46,7 +48,9 @@ perduodami per `App` → `Dataset` / šaltinių konstruktorius / funkcijų param
 paleisti su kita (testine) duomenų baze: `App.create(db_path=..., params_path=..., starter_dir=None)`.
 
 **Žinynai duomenų bazėje** (redaguojami programos skirtuke „Duomenys“): `trasos`, `trasu_sinonimai`,
-`komandos`, `zaidejai`, `gp_pavadinimai`, `vairuotoju_vardai`, `vertimai`, `kalbos`.
+`komandos`, `zaidejai`, `gp_pavadinimai`, `vairuotoju_vardai`, `naujienu_saltiniai`, `naujienu_zymes`,
+`vertimai`, `kalbos`. Komandos tapatybė (`Reference.team_key`): raktažodžiai su ta pačia spalva = ta pati komanda
+(pvz. „RB F1 Team“, „Racing Bulls“, „Visa Cash App RB“).
 
 ## Kaip plėsti
 

@@ -116,6 +116,46 @@ label p {{ color: {MUTED} !important; text-transform: uppercase; font-weight: 70
 .f1-w b {{ font-size: 1.25rem; font-weight: 900; font-style: italic; }}
 .f1-w span {{ display: block; color: {MUTED}; font-size: .75rem; text-transform: uppercase; }}
 
+/* žymės */
+.f1-chip {{ display: inline-block; padding: .08rem .5rem; margin: 0 .3rem .3rem 0; border-radius: 4px;
+    font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap;
+    border: 1px solid var(--c, {LINE}); color: #fff; background: color-mix(in srgb, var(--c, {LINE}) 22%, transparent); }}
+.f1-chip.perf {{ --c: {RED}; }}
+.f1-chip.circ {{ --c: #3E8EDE; }}
+.f1-chip.rel {{ --c: #8A8A96; }}
+.f1-chip.tag {{ --c: #55555F; color: {MUTED}; }}
+
+/* bolidų atnaujinimai */
+.f1-upg {{ columns: 2 420px; column-gap: .9rem; }}
+.f1-upg-card {{ break-inside: avoid; margin-bottom: .9rem; }}
+.f1-upg-card {{ background: {CARD}; border-top: 4px solid var(--team); border-radius: 0 14px 0 0; padding: .9rem 1.1rem; }}
+.f1-upg-card .h {{ display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; flex-wrap: wrap;
+    margin-bottom: .5rem; }}
+.f1-upg-card .tn {{ font-size: 1.15rem; font-weight: 900; font-style: italic; text-transform: uppercase;
+    padding-right: .2em; }}
+.f1-upg-card .it {{ border-top: 1px solid {LINE}; padding: .45rem 0 .35rem; }}
+.f1-upg-card .it b {{ margin-right: .4rem; }}
+.f1-upg-card .it .d {{ color: {MUTED}; font-size: .86rem; line-height: 1.45; margin-top: .15rem; }}
+.f1-upg-card .none {{ color: {MUTED}; font-size: .9rem; font-style: italic; }}
+
+/* naujienos */
+.f1-news .n {{ border-bottom: 1px solid #26262F; padding: .75rem 0 .6rem; }}
+.f1-news .meta {{ color: {MUTED}; font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }}
+.f1-news a.t {{ display: block; color: #fff; font-weight: 700; font-size: 1.05rem; text-decoration: none;
+    margin: .15rem 0 .2rem; line-height: 1.35; }}
+.f1-news a.t:hover {{ color: {RED}; }}
+.f1-news .s {{ color: {MUTED}; font-size: .9rem; line-height: 1.45; margin-bottom: .35rem; }}
+
+/* sezono atnaujinimų lentelė */
+.f1-heat-wrap {{ overflow-x: auto; }}
+table.f1-heat {{ border-collapse: collapse; font-size: .85rem; }}
+table.f1-heat th {{ color: {MUTED}; font-size: .7rem; font-weight: 700; text-transform: uppercase; padding: .3rem .35rem;
+    white-space: nowrap; writing-mode: vertical-rl; transform: rotate(180deg); text-align: left; }}
+table.f1-heat th.team {{ writing-mode: horizontal-tb; transform: none; }}
+table.f1-heat td {{ text-align: center; min-width: 2rem; padding: .3rem .2rem; border: 1px solid #1A1A22; font-weight: 700; }}
+table.f1-heat td.team {{ text-align: left; white-space: nowrap; padding-right: .8rem; border-left: 4px solid var(--team);
+    font-weight: 700; font-style: italic; text-transform: uppercase; }}
+
 /* rezultatų lentelė */
 table.f1-table {{ width: 100%; border-collapse: collapse; font-size: 1rem; }}
 table.f1-table th {{ text-align: left; color: {MUTED}; text-transform: uppercase; font-size: .78rem;
@@ -220,6 +260,58 @@ def contribution_chart(contrib, driver_label, value_label, feature_label):
                  alt.Tooltip("v:Q", title=value_label, format="+.2f")],
     ).properties(height=34 * len(order))
     st.altair_chart(chart, width="stretch", height=34 * len(order) + 170)   # + ašis ir legenda
+
+
+REASON_CLASS = {"performance": "perf", "circuit": "circ", "reliability": "rel"}
+
+
+def chips(items):
+    """items – [(tekstas, klasė, spalva arba None)]."""
+    out = []
+    for text, cls, color in items:
+        style = f' style="--c:{color}"' if color else ""
+        out.append(f'<span class="f1-chip {cls}"{style}>{html.escape(text)}</span>')
+    return "".join(out)
+
+
+def upgrade_cards(teams, reason_labels, empty_text):
+    """teams – [briefing.TeamUpgrades]; reason_labels – {priežastis: pavadinimas}."""
+    cards = []
+    for t in teams:
+        counts = chips([(f"{reason_labels[r]} {n}", REASON_CLASS[r], None) for r, n in t.counts.items() if n])
+        items = "".join(
+            f'<div class="it"><b>{html.escape(comp or "")}</b>'
+            f'{chips([(reason_labels[r], REASON_CLASS[r], None)]) if r in REASON_CLASS else ""}'
+            f'<div class="d">{html.escape(desc or "")}</div></div>' for comp, r, desc in t.items)
+        cards.append(f'<div class="f1-upg-card" style="--team:{t.color}"><div class="h">'
+                     f'<span class="tn">{html.escape(t.name)}</span><span>{counts}</span></div>'
+                     f'{items or f"<div class=none>{html.escape(empty_text)}</div>"}</div>')
+    _md(f'<div class="f1-upg">{"".join(cards)}</div>')
+
+
+def news_list(rows):
+    """rows – [dict(title, url, meta, summary, chips=[(tekstas, klasė, spalva)])]."""
+    items = []
+    for r in rows:
+        summary = f'<div class="s">{html.escape(r["summary"])}</div>' if r.get("summary") else ""
+        items.append(f'<div class="n"><div class="meta">{html.escape(r["meta"])}</div>'
+                     f'<a class="t" href="{html.escape(r["url"])}" target="_blank" rel="noopener">'
+                     f'{html.escape(r["title"])}</a>{summary}{chips(r.get("chips", []))}</div>')
+    _md(f'<div class="f1-news">{"".join(items)}</div>')
+
+
+def heat_table(matrix, team_label, color_of):
+    """matrix – DataFrame komanda x etapas (skaičiai); spalvos intensyvumas pagal reikšmę."""
+    top = max(int(matrix.values.max()), 1)
+    head = f'<th class="team">{html.escape(team_label)}</th>' + "".join(f"<th>{html.escape(str(c))}</th>"
+                                                                      for c in matrix.columns)
+    rows = []
+    for team, r in matrix.iterrows():
+        cells = "".join(f'<td style="background:rgba(225,6,0,{0.12 + 0.75 * v / top:.2f})">{v}</td>' if v
+                        else '<td style="color:#44444C">·</td>' for v in r.astype(int))
+        rows.append(f'<tr><td class="team" style="--team:{color_of(team)}">{html.escape(team)}</td>{cells}</tr>')
+    _md(f'<div class="f1-heat-wrap"><table class="f1-heat"><thead><tr>{head}</tr></thead>'
+        f'<tbody>{"".join(rows)}</tbody></table></div>')
 
 
 def _scale_bar(value, of=5):

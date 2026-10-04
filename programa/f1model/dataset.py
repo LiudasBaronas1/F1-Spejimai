@@ -27,6 +27,7 @@ class Dataset:
     odds: pd.DataFrame
     settings: Settings
     ref: Reference
+    grid: pd.DataFrame = field(default_factory=pd.DataFrame)       # FIA starto rikiuotė (su baudomis)
     cache: dict = field(default_factory=dict)   # apskaičiuoti požymiai (pagal sesiją ir laiką)
 
     @classmethod
@@ -44,7 +45,8 @@ class Dataset:
         res["kind"] = np.where(res.session.isin(QUALI_TYPE), "quali", "race")
         res["clean"] = (res.kind == "quali") | res.status.map(_finished)  # be gedimų / avarijų
         odds = db.query("SELECT season, round, session, market, driver, prob, price_ts, source FROM odds")
-        return cls(sess, res, db.query("SELECT * FROM practice"), events, odds, settings, ref)
+        return cls(sess, res, db.query("SELECT * FROM practice"), events, odds, settings, ref,
+                   grid=db.query("SELECT season, round, session, driver, grid FROM starto_rikiuote"))
 
     # --- patogūs filtrai
     def session_rows(self, season, rnd, session=None):
@@ -53,6 +55,14 @@ class Dataset:
 
     def results_of(self, season, rnd, session):
         return self.res[(self.res.season == season) & (self.res["round"] == rnd) & (self.res.session == session)]
+
+    def fia_grid(self, season, rnd, session):
+        """{vairuotojas: starto vieta} iš FIA dokumento (tuščias, jei jo dar nėra)."""
+        g = self.grid
+        if g.empty:
+            return {}
+        g = g[(g.season == season) & (g["round"] == rnd) & (g.session == session)]
+        return dict(zip(g.driver, g.grid))
 
     def top3(self, season, rnd, session):
         r = self.results_of(season, rnd, session).dropna(subset=["position"])

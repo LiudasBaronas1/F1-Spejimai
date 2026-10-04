@@ -42,6 +42,7 @@ TRACK_ALIASES = {"Monte Carlo": "Monaco", "Yas Island": "Yas Marina", "Sepang": 
                  "Losail": "Lusail", "Sao Paulo": "São Paulo", "Singapore": "Marina Bay"}
 TEAM_COLORS = [("mercedes", "#27F4D2"), ("red bull", "#3671C6"), ("ferrari", "#E8002D"), ("mclaren", "#FF8000"),
                ("aston", "#229971"), ("alpine", "#00A1E8"), ("racing bulls", "#6692FF"), ("rb f1", "#6692FF"),
+               ("visa cash app", "#6692FF"),
                ("williams", "#64C4FF"), ("haas", "#B6BABD"), ("audi", "#F50537"), ("sauber", "#52E252"),
                ("cadillac", "#C9A961")]
 PLAYERS = []   # totalizatoriaus žaidėjai (Excel lapų pavadinimai) – įrašomi programoje, jei turite savo lentelę
@@ -53,6 +54,24 @@ GP_NAMES = {"Australia": "Australian", "China": "Chinese", "Japan": "Japanese", 
             "Mexico": "Mexico City", "Brazil": "São Paulo", "Las Vegas": "Las Vegas", "Qatar": "Qatar",
             "Abu Dhabi": "Abu Dhabi"}
 DRIVER_NAMES = {"ZHOU": "ZHO", "GUANYU": "ZHO", "KIMI ANTONELLI": "ANT"}
+NEWS_FEEDS = [("Formula1.com", "https://www.formula1.com/en/latest/all.xml"),
+              ("Autosport", "https://www.autosport.com/rss/f1/news/"),
+              ("Motorsport.com", "https://www.motorsport.com/rss/f1/news/"),
+              ("RaceFans", "https://www.racefans.net/feed/"),
+              ("BBC Sport", "https://feeds.bbci.co.uk/sport/formula1/rss.xml")]
+NEWS_TOPICS = {  # tema -> raktažodžiai (anglų k., nes šaltiniai angliški)
+    "upgrades": ["upgrade", "upgrades", "upgraded", "new floor", "new front wing", "new rear wing", "sidepod",
+                 "aero package", "update package", "new parts", "diffuser"],
+    "penalties": ["penalty", "penalties", "grid drop", "disqualified", "disqualification", "reprimand",
+                  "stewards", "investigation", "back of the grid", "pit lane start"],
+    "power_unit": ["power unit", "engine", "gearbox", "energy store", "turbo", "mgu"],
+    "drivers": ["injury", "injured", "illness", "unwell", "replaced", "replacement", "substitute",
+                "reserve driver", "stand in", "stand-in", "debut", "contract", "sacked"],
+    "weather": ["rain", "wet", "storm", "typhoon", "thunderstorm", "heatwave", "extreme heat"],
+    "rules": ["technical directive", "regulation", "rule change", "budget cap", "protest", "appeal",
+              "legality", "flexi-wing", "flexible wing"],
+    "tyres": ["tyre", "tyres", "pirelli", "compound", "pit stop", "one-stop", "two-stop"],
+}
 
 TRACK_COLS = ["trasa", "greitis", "prispaudimas", "gatve", "padangos", "lenkimo_sunkumas", "platuma", "ilguma"]
 DEFAULTS = {  # lentelė -> pradinės eilutės
@@ -62,6 +81,8 @@ DEFAULTS = {  # lentelė -> pradinės eilutės
     "zaidejai": [dict(vardas=p, aktyvus=1) for p in PLAYERS],
     "gp_pavadinimai": [dict(excel_pavadinimas=k, fastf1_dalis=v) for k, v in GP_NAMES.items()],
     "vairuotoju_vardai": [dict(vardas=k, kodas=v) for k, v in DRIVER_NAMES.items()],
+    "naujienu_saltiniai": [dict(pavadinimas=n, adresas=u, aktyvus=1) for n, u in NEWS_FEEDS],
+    "naujienu_zymes": [dict(zyme=t, raktazodis=k) for t, kws in NEWS_TOPICS.items() for k in kws],
 }
 SIGMA = 1.5
 
@@ -123,6 +144,13 @@ class Reference:
                    players=q("SELECT vardas FROM zaidejai WHERE aktyvus=1").vardas.tolist(),
                    gp_names=dict(q("SELECT excel_pavadinimas, fastf1_dalis FROM gp_pavadinimai").values),
                    driver_names=dict(q("SELECT vardas, kodas FROM vairuotoju_vardai").values))
+
+    def team_key(self, team):
+        """Komandos tapatybė iš žinyno „komandos“, nepriklausanti nuo rėmėjų pavadinime: pirmasis raktažodis
+        su ta pačia spalva (pvz. „RB F1 Team“, „Racing Bulls“, „Visa Cash App RB“ -> „racing bulls“)."""
+        t = (team or "").lower()
+        color = next((c for key, c in self.team_colors if key.lower() in t), None)
+        return next((key for key, c in self.team_colors if c == color), None) if color else None
 
     def team_color(self, team):
         t = (team or "").lower()
