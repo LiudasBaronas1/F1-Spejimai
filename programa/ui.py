@@ -275,8 +275,14 @@ with tab["upgrades"]:
         up_rnd = u1.selectbox(t("upgrades.round"), list(up_rounds)[::-1], format_func=lambda r: f"{r}. {up_rounds[r]}",
                               key=f"up_round_{up_season}")
         reasons = {r: t(f"reason.{r}") for r in ("performance", "circuit", "reliability")}
+        doc = brief.upgrade_document(up_season, up_rnd)
+        if doc:
+            st.markdown(f'{t("upgrades.source")}: <a class="f1-link" href="{doc}" target="_blank" rel="noopener">'
+                        f'{t("upgrades.full_doc")}</a>', unsafe_allow_html=True)
         ui.section(t("upgrades.team_title"), t("upgrades.team_sub"))
-        ui.upgrade_cards(brief.upgrades(up_season, up_rnd), reasons, t("upgrades.empty"))
+        ui.upgrade_cards(brief.upgrades(up_season, up_rnd), reasons, t("upgrades.empty"),
+                         {"source": t("upgrades.source"), "doc": t("upgrades.doc"),
+                          "doc_page": t("upgrades.doc_page"), "articles": t("upgrades.articles")})
         ui.section(t("upgrades.season_title"), t("upgrades.season_sub"))
         ui.heat_table(brief.upgrade_matrix(up_season), t("col.team"), ref.team_color)
         st.caption(t("upgrades.note"))

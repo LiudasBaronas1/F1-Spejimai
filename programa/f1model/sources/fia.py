@@ -56,10 +56,11 @@ def _clean(s):
 # ------------------------------------------------------------------ dokumentų apdorojimas (be tinklo – testuojama)
 
 def parse_car_presentation(pages):
-    """pages – PDF puslapių tekstai. Grąžina [{team, nr, component, reason, description}];
+    """pages – PDF puslapių tekstai. Grąžina [{team, page, nr, component, reason, description}]
+    (page – komandos puslapio numeris PDF'e, nuorodai „#page=N“);
     komanda be atnaujinimų – viena eilutė su nr=0 ir component=None."""
     blocks, cur = [], None
-    for text in pages[1:]:                      # 1 puslapis – FIA viršelis
+    for page_no, text in enumerate(pages[1:], 2):     # 1 puslapis – FIA viršelis
         lines = [ln.strip() for ln in text.splitlines()]
         head = next((i for i, ln in enumerate(lines) if ln.lower().startswith("car presentation")), None)
         if head is not None:
@@ -67,7 +68,7 @@ def parse_car_presentation(pages):
             team_i = next((i for i, ln in enumerate(rest) if ln), None)
             if team_i is None:
                 continue
-            cur = {"team": rest[team_i].strip("* "), "lines": rest[team_i + 1:]}
+            cur = {"team": rest[team_i].strip("* "), "page": page_no, "lines": rest[team_i + 1:]}
             blocks.append(cur)
         elif cur:
             cur["lines"] += lines
@@ -77,7 +78,7 @@ def parse_car_presentation(pages):
         m = HEADER_END_RE.search(body)
         items = _split_items(body[m.end():]) if m else []
         if not items:
-            rows.append(dict(team=b["team"], nr=0, component=None, reason=None, description=None))
+            rows.append(dict(team=b["team"], page=b["page"], nr=0, component=None, reason=None, description=None))
             continue
         for nr, text in items:
             text = _clean(text)
@@ -87,7 +88,7 @@ def parse_car_presentation(pages):
                 reason = next(v for k, v in REASONS.items() if reason.startswith(k))
             else:
                 component, reason, rest = text, None, ""
-            rows.append(dict(team=b["team"], nr=nr, component=_clean(component)[:120] or None, reason=reason,
+            rows.append(dict(team=b["team"], page=b["page"], nr=nr, component=_clean(component)[:120] or None, reason=reason,
                              description=_clean(rest)[:1500] or None))
     return rows
 
@@ -197,7 +198,7 @@ class UpgradeSource(_FiaSource):
             rows = parse_car_presentation(self.docs.pages(url))
             self.db.write("atnaujinimai", [dict(season=season, round=rnd, komanda=r["team"], nr=r["nr"],
                                                 detale=r["component"], priezastis=r["reason"],
-                                                aprasymas=r["description"]) for r in rows],
+                                                aprasymas=r["description"], puslapis=r["page"]) for r in rows],
                           replace_where=("season=? AND round=?", (season, rnd)))
             self._mark("car_presentation", season, rnd, url)
             log.info("FIA atnaujinimai: %s %s – %s eil.", season, ev["name"], len(rows))

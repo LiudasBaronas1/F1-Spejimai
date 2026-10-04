@@ -70,7 +70,9 @@ CREATE TABLE IF NOT EXISTS atnaujinimai (
     season INTEGER, round INTEGER, komanda TEXT,
     nr INTEGER,                -- detalės nr. dokumente; 0 – komanda atnaujinimų neatvežė
     detale TEXT, priezastis TEXT,   -- performance / circuit / reliability
-    aprasymas TEXT, PRIMARY KEY (season, round, komanda, nr));
+    aprasymas TEXT,
+    puslapis INTEGER,          -- komandos puslapis FIA PDF'e (nuorodai)
+    PRIMARY KEY (season, round, komanda, nr));
 CREATE TABLE IF NOT EXISTS starto_rikiuote (
     season INTEGER, round INTEGER, session TEXT, driver TEXT, grid INTEGER, dokumentas TEXT,
     PRIMARY KEY (season, round, session, driver));
@@ -105,7 +107,8 @@ NEW_COLUMNS = [("results", "official_position", "INTEGER"), ("weather", "region_
                ("practice", "quali_sim_s", "REAL"), ("weather", "track_rain_frac", "REAL"),
                ("weather", "track_air_c", "REAL"), ("weather", "track_temp_c", "REAL"),
                ("weather", "fc_pop", "REAL"), ("weather", "fc_pop_region", "REAL"),
-               ("weather", "fc_precip", "REAL"), ("weather", "fc_cloud", "REAL")]
+               ("weather", "fc_precip", "REAL"), ("weather", "fc_cloud", "REAL"),
+               ("atnaujinimai", "puslapis", "INTEGER")]
 
 VIEWS = {
     "v_rezultatai": """

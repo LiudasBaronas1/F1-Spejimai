@@ -29,6 +29,8 @@ class FiaParsingTest(unittest.TestCase):
         rbr = [r for r in rows if r["team"].startswith("Oracle")]
         self.assertEqual((rbr[0]["component"], rbr[0]["reason"]), ("Floor Edge", "performance"))
         self.assertEqual([(r["nr"], r["component"]) for r in rows if r["team"] == "Williams"], [(0, None)])
+        # puslapis PDF'e (nuorodai #page=N): viršelis 1, McLaren 2 (tęsinys 3), Red Bull 4, Williams 5
+        self.assertEqual({r["team"][:6]: r["page"] for r in rows}, {"McLare": 2, "Oracle": 4, "Willia": 5})
 
     def test_starting_grid(self):
         page = "Title Final Starting Grid\n1 3 Max VERSTAPPEN\nRed Bull\n1:35.1\n2 44 Lewis HAMILTON\n" \
@@ -51,6 +53,26 @@ class NewsTest(unittest.TestCase):
         topics = [("upgrades", "upgrade"), ("penalties", "penalty"), ("weather", "rain")]
         self.assertEqual(news.tag(item["title"] + " " + item["summary"], topics), ["penalties", "upgrades"])
         self.assertEqual(news.tag("Ukraine", topics), [])                # „rain“ ne žodžio pradžioje
+
+
+class BriefingTest(unittest.TestCase):
+    def test_upgrades_links_and_articles(self):
+        app, _ = temp_app()
+        synthetic_season(app.db, rounds=2)
+        db, brief = app.db, app.briefing()
+        db.write("atnaujinimai", [dict(season=2026, round=1, komanda="McLaren F1 Team", nr=1, detale="Floor",
+                                       priezastis="performance", aprasymas="x", puslapis=3)])
+        db.write("fia_dokumentai", [dict(tipas="car_presentation", season=2026, round=1, url="https://fia/doc.pdf",
+                                         gauta="x")])
+        team = brief.upgrades(2026, 1)[0]                                   # naujienų nėra – be klaidų
+        self.assertEqual((team.source_url, team.articles), ("https://fia/doc.pdf#page=3", []))
+        self.assertTrue(brief.news(days=10000).empty and brief.news(days=10000, tags=["upgrades"]).empty)
+        day = db.query("SELECT date FROM events WHERE round=1").date.iloc[0]
+        db.write("naujienos", [dict(url=f"https://n/{i}", saltinis="S", pavadinimas=title, santrauka="",
+                                    paskelbta=f"{day}T10:00:00+00:00", komandos="mclaren", zymes="upgrades")
+                               for i, title in enumerate(["McLaren brings new floor", "McLaren brings a new floor",
+                                                          "Ferrari brings new wing"])])   # McLaren – tik tekste
+        self.assertEqual([a[0] for a in brief.upgrades(2026, 1)[0].articles], ["McLaren brings new floor"])
 
 
 class TeamIdentityTest(unittest.TestCase):

@@ -137,6 +137,15 @@ label p {{ color: {MUTED} !important; text-transform: uppercase; font-weight: 70
 .f1-upg-card .it b {{ margin-right: .4rem; }}
 .f1-upg-card .it .d {{ color: {MUTED}; font-size: .86rem; line-height: 1.45; margin-top: .15rem; }}
 .f1-upg-card .none {{ color: {MUTED}; font-size: .9rem; font-style: italic; }}
+.f1-upg-card .src {{ border-top: 1px solid {LINE}; margin-top: .4rem; padding-top: .5rem; font-size: .85rem;
+    line-height: 1.5; }}
+.f1-upg-card .src .k {{ color: {MUTED}; font-size: .7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; margin-right: .4rem; }}
+.f1-upg-card .src a, [data-testid="stMarkdownContainer"] a.f1-link {{ color: #fff !important;
+    text-decoration: underline; text-decoration-color: {RED}; text-underline-offset: 3px; }}
+.f1-upg-card .src a:hover, [data-testid="stMarkdownContainer"] a.f1-link:hover {{ color: {RED} !important; }}
+.f1-upg-card .src .a {{ display: block; margin-top: .2rem; }}
+.f1-upg-card .src .a span {{ color: {MUTED}; font-size: .75rem; margin-left: .3rem; }}
 
 /* naujienos */
 .f1-news .n {{ border-bottom: 1px solid #26262F; padding: .75rem 0 .6rem; }}
@@ -274,8 +283,26 @@ def chips(items):
     return "".join(out)
 
 
-def upgrade_cards(teams, reason_labels, empty_text):
-    """teams – [briefing.TeamUpgrades]; reason_labels – {priežastis: pavadinimas}."""
+def _link(url, text):
+    return f'<a href="{html.escape(url)}" target="_blank" rel="noopener">{html.escape(text)}</a>'
+
+
+def _upgrade_sources(t, labels):
+    """Kortelės apačia: FIA dokumentas (ties komandos puslapiu) ir straipsniai apie atnaujinimus."""
+    parts = []
+    if t.source_url:
+        doc = labels["doc_page"].format(page=t.page) if t.page else labels["doc"]
+        parts.append(f'<div><span class="k">{html.escape(labels["source"])}</span>{_link(t.source_url, doc)}</div>')
+    if t.articles:
+        links = "".join(f'<span class="a">{_link(url, title)}<span>{html.escape(src)}</span></span>'
+                        for title, url, src in t.articles)
+        parts.append(f'<div><span class="k">{html.escape(labels["articles"])}</span>{links}</div>')
+    return f'<div class="src">{"".join(parts)}</div>' if parts else ""
+
+
+def upgrade_cards(teams, reason_labels, empty_text, labels):
+    """teams – [briefing.TeamUpgrades]; reason_labels – {priežastis: pavadinimas};
+    labels – nuorodų tekstai: source, doc, doc_page (su {page}), articles."""
     cards = []
     for t in teams:
         counts = chips([(f"{reason_labels[r]} {n}", REASON_CLASS[r], None) for r, n in t.counts.items() if n])
@@ -285,7 +312,8 @@ def upgrade_cards(teams, reason_labels, empty_text):
             f'<div class="d">{html.escape(desc or "")}</div></div>' for comp, r, desc in t.items)
         cards.append(f'<div class="f1-upg-card" style="--team:{t.color}"><div class="h">'
                      f'<span class="tn">{html.escape(t.name)}</span><span>{counts}</span></div>'
-                     f'{items or f"<div class=none>{html.escape(empty_text)}</div>"}</div>')
+                     f'{items or f"<div class=none>{html.escape(empty_text)}</div>"}'
+                     f'{_upgrade_sources(t, labels)}</div>')
     _md(f'<div class="f1-upg">{"".join(cards)}</div>')
 
 
