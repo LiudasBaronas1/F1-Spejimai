@@ -42,7 +42,8 @@ parametrai.json          keičiami modelio nustatymai
 Dokumentacija.pdf        naudotojo ir techninė dokumentacija
 programa/
 ├── idiegti.bat          diegimas (Python aplinka, bibliotekos, darbalaukio nuoroda)
-├── ui.py, ui_style.py   sąsaja (Streamlit)
+├── ui.py, views/        sąsaja (Streamlit): įėjimas ir puslapiai
+├── ui_style.py, ui.css  sąsajos išvaizda
 ├── cli.py               komandinė eilutė ir automatinis spėjimas prieš sesiją
 ├── f1model/             modelis, duomenų šaltiniai, duomenų bazė, vertimai
 ├── pradiniai_duomenys/  pradinė duomenų bazė naujam vartotojui

@@ -12,19 +12,19 @@
 Galutinė `rain_prob`: įvykusiai sesijai – faktas iš jutiklių, kitaip – kalibruota prognozė.
 """
 import json
+import math
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 
-from ..config import DATA_DIR, SEASON
+from ..config import SEASON, SESSION_MINUTES
 from . import DataSource, get_json, log
 
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 HISTORICAL_URL = "https://historical-forecast-api.open-meteo.com/v1/forecast"
-CALIBRATION_FILE = DATA_DIR / "oru_kalibracija.json"
-DURATION_H = {"FP1": 1, "FP2": 1, "FP3": 1, "SQ": 1, "S": 1, "Q": 1, "R": 2}
+DURATION_H = {s: math.ceil(m / 60) for s, m in SESSION_MINUTES.items()}   # prognozės langas valandomis
 LIVE_DAYS = 60               # naujesnėms nei tiek dienų – gyvos prognozės API (su past_days)
 REGION_KM, WINDOW_PAD_H = 15, 1
 WET_FRAC = 0.3               # jei lijo ≥30 % sesijos laiko – sesija visiškai šlapia
@@ -47,11 +47,11 @@ def region_points(lat, lon):
 
 class TrackWeatherSource(DataSource):
     label = "trasos jutikliai"
+    expected_s = 6.0
 
     def update(self, season):
         import fastf1
         from fastf1 import _api
-        from . import official  # noqa: F401 – įjungia FastF1 talpyklą
         done_before = (datetime.now(timezone.utc) - timedelta(hours=2)).isoformat()
         todo = self.db.query("SELECT s.round, s.session FROM sessions s LEFT JOIN weather w USING(season, round, session) "
                         "WHERE s.season=? AND s.date_utc < ? AND w.track_rain_frac IS NULL", (season, done_before))
@@ -125,7 +125,12 @@ def _sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
 
-def calibrate(db, path=CALIBRATION_FILE):
+def calibration_summary(path):
+    """Kalibravimo rezultatas (dict) arba None, jei dar nekalibruota."""
+    return json.loads(path.read_text(encoding="utf-8")) if path and path.exists() else None
+
+
+def calibrate(db, path):
     """Išmoko P(lietus trasoje | prognozė) ir įvertina tikslumą (palikus po vieną sezoną testui)."""
     d = db.query("SELECT * FROM weather WHERE track_rain_frac IS NOT NULL AND fc_pop IS NOT NULL "
                  "AND region_rain_mm IS NOT NULL").fillna({"fc_precip": 0, "fc_cloud": 0.5})
@@ -146,17 +151,20 @@ def calibrate(db, path=CALIBRATION_FILE):
     return result
 
 
-def calibrated_prob(df, path=CALIBRATION_FILE):
-    if path.exists():
-        coef = np.array(json.loads(path.read_text(encoding="utf-8"))["coef"])
-        return _sigmoid(design(df) @ coef)
-    return naive_prob(df).values
+def calibrated_prob(df, path):
+    summary = calibration_summary(path)
+    return _sigmoid(design(df) @ np.array(summary["coef"])) if summary else naive_prob(df).values
 
 
 # ------------------------------------------------------------------ šaltinis
 
 class WeatherSource(DataSource):
     label = "regiono orai"
+    expected_s = 18.0
+
+    def __init__(self, db, ref, calibration_path):
+        super().__init__(db, ref)
+        self.calibration_path = calibration_path
 
     def update(self, season, force=False):
         now = datetime.now(timezone.utc)
@@ -182,11 +190,11 @@ class WeatherSource(DataSource):
                     for _, s in need.iterrows() if (f := forecast_features(points, s.date_utc, DURATION_H[s.session]))]
             self.db.write("weather", rows, KEYS)
         if season == SEASON:
-            calibrate(self.db)
-        finalize(self.db, season)
+            calibrate(self.db, self.calibration_path)
+        finalize(self.db, season, self.calibration_path)
 
 
-def finalize(db, season, path=CALIBRATION_FILE):
+def finalize(db, season, path):
     """Galutinė lietaus tikimybė ir temperatūra: faktas iš jutiklių, jei yra, kitaip – kalibruota prognozė."""
     w = db.query("SELECT * FROM weather WHERE season=?", (season,))
     if w.empty:

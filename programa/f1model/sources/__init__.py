@@ -15,6 +15,7 @@ log = logging.getLogger("f1")
 
 class DataSource(ABC):
     label = "šaltinis"
+    expected_s = 10.0           # kiek apytiksliai užtrunka (eigos juostos prognozei, kol nėra tikrų matavimų)
 
     def __init__(self, db, ref):
         self.db, self.ref = db, ref
@@ -62,16 +63,20 @@ def get_json(url, params=None, tries=6, **kw):
     raise RuntimeError(f"Užklausų limitas: {url}")
 
 
-def registry(db, ref):
-    """Visi šaltiniai, atnaujinimo tvarka (orai – po rezultatų, lažybos – pabaigoje)."""
-    from .fia import ClassificationSource, GridSource, UpgradeSource
+def registry(db, ref, cache_dir, calibration_path):
+    """Visi šaltiniai, atnaujinimo tvarka (orai – po rezultatų, lažybos – pabaigoje).
+    Priklausomybės perduodamos čia: FIA dokumentų rodyklė bendra (fia.com siunčiama vieną kartą)."""
+    from .fia import ClassificationSource, FiaDocuments, GridSource, UpgradeSource
     from .news import NewsSource
     from .odds import BookmakerSource, KalshiSource, PolymarketSource
     from .official import OfficialSource
     from .track_maps import TrackMapSource
     from .weather import TrackWeatherSource, WeatherSource
-    return [cls(db, ref) for cls in (OfficialSource, ClassificationSource, TrackMapSource, TrackWeatherSource, WeatherSource, UpgradeSource,
-                                     GridSource, BookmakerSource, KalshiSource, PolymarketSource, NewsSource)]
+    docs = FiaDocuments()
+    return [OfficialSource(db, ref), ClassificationSource(db, ref, docs), TrackMapSource(db, ref, cache_dir),
+            TrackWeatherSource(db, ref), WeatherSource(db, ref, calibration_path), UpgradeSource(db, ref, docs),
+            GridSource(db, ref, docs), BookmakerSource(db, ref), KalshiSource(db, ref), PolymarketSource(db, ref),
+            NewsSource(db, ref)]
 
 
 def update_all(sources, season, only=None, progress=None):

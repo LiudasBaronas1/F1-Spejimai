@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
-from f1model import automation, backtest, features, model, report
+from f1model import automation, backtest, features, model
 from f1model.app import App
 from f1model.config import DATA_DIR, SEASON, SESSION_NAMES_LT
 from f1model.dataset import kind_of
@@ -30,7 +30,7 @@ def cmd_spejimas(app, args):
     out = model.predict(data, SEASON, rnd, session, weights=fitted[kind_of(session)][0])
     model.save_prediction(app.db, SEASON, rnd, session, out)
     ev = data.event(SEASON, rnd)
-    report.write(app.report_path, data, fitted, last=(ev["name"], session, out, ev.circuit))
+    app.write_report(data, fitted, last=(ev["name"], session, out, ev.circuit))
     names = features.names()
     print(f"\n=== {ev['name']} ({ev.circuit}) – {SESSION_NAMES_LT[session]} · lietus {out['rain']:.0%} ===\n")
     print(f"{'':<5}{'P1':>6}{'P2':>6}{'P3':>6}{'TOP3':>6}  " + "".join(f"{features.REGISTRY[f].short:>8}" for f in names))
@@ -46,7 +46,7 @@ def cmd_testas(app, args):
     pd.set_option("display.width", 200)
     print(df.drop(columns="round").to_string(index=False))
     print("\nIŠ VISO:\n" + df[backtest.score_columns(df, data.ref.players)].sum().sort_values(ascending=False).to_string())
-    report.write(app.report_path, data, model.fit_all(data))
+    app.write_report(data, model.fit_all(data))
 
 
 def cmd_atnaujinti(app, args):
@@ -69,6 +69,7 @@ def main():
     sub.add_parser("automatinis")
     args = p.parse_args()
     # automatinis režimas veikia be lango – rašome į žurnalą
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     target = dict(filename=DATA_DIR / "automatinis.log", encoding="utf-8") if args.cmd == "automatinis" \
         else dict(stream=sys.stdout)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S", **target)

@@ -2,7 +2,7 @@
 
 Tekstai laikomi DB lentelėje `vertimai` (raktas, kalba, tekstas), kalbų sąrašas – lentelėje `kalbos`.
 Pradinės reikšmės – translations.py; paleidžiant įrašomi tik TRŪKSTAMI raktai, todėl programoje
-(skirtukas „Duomenys“ -> „Vertimai“) pataisyti tekstai neperrašomi.
+(meniu „Duomenys“ -> „Žinynai“ -> „Vertimai“) pataisyti tekstai neperrašomi.
 
 NAUJA KALBA: eilutė lentelėje `kalbos` + vertimai lentelėje `vertimai` (arba translations.py).
 Neišversti raktai rodomi numatytąja kalba, o jei nėra ir jos – pačiu raktu.

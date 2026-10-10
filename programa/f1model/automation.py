@@ -7,7 +7,7 @@ import logging
 import subprocess
 from datetime import datetime, timedelta, timezone
 
-from . import model, report
+from . import model
 from .config import COMPETITIVE, SEASON, SESSION_NAMES_LT
 from .dataset import kind_of
 
@@ -33,7 +33,7 @@ def due_sessions(db, now=None):
     """Artėjančios sesijos, kurioms dar nėra šviežio spėjimo."""
     now = now or datetime.now(timezone.utc)
     s = db.query("SELECT s.round, s.session, s.date_utc, e.name FROM sessions s JOIN events e USING(season, round) "
-                 "WHERE s.season=? AND s.status!='ok' AND s.date_utc > ? AND s.date_utc <= ?",
+                 "WHERE s.season=? AND s.status NOT IN ('ok', 'fia') AND s.date_utc > ? AND s.date_utc <= ?",
                  (SEASON, now.isoformat(), (now + timedelta(minutes=BEFORE_MIN)).isoformat()))
     fresh = (now - timedelta(minutes=BEFORE_MIN + 20)).isoformat()
     return [r for _, r in s[s.session.isin(COMPETITIVE)].iterrows()
@@ -53,7 +53,7 @@ def run(app, due=None, notify=windows_toast):
         out = model.predict(data, SEASON, rnd, session, weights=fitted[kind_of(session)][0])
         model.save_prediction(app.db, SEASON, rnd, session, out)
         ev = data.event(SEASON, rnd)
-        report.write(app.report_path, data, fitted, last=(ev["name"], session, out, ev.circuit))
+        app.write_report(data, fitted, last=(ev["name"], session, out, ev.circuit))
         start = datetime.fromisoformat(r.date_utc).astimezone().strftime("%H:%M")
         msg = f"{' – '.join(out['pick'])}  (tikėtini taškai {out['expected']:.1f}, lietus {out['rain']:.0%}, pradžia {start})"
         log.info("%s %s: %s", r["name"], session, msg)

@@ -137,6 +137,7 @@ class OddsSource(DataSource):
 class KalshiSource(OddsSource):
     """Reguliuojama JAV birža, didelės apyvartos. Senesni įvykiai – /historical archyve."""
     label, source = "Kalshi", "kalshi"
+    expected_s = 45.0
     API = "https://api.elections.kalshi.com/trade-api/v2"
     SERIES = {"KXF1RACE": ("R", "win"), "KXF1POLE": ("Q", "pole"), "KXF1POLEPOSITION": ("Q", "pole"),
               "KXF1RACEPODIUM": ("R", "podium"), "KXF1TOP5": ("R", "top5"), "KXF1RACESPRINT": ("S", "win"),
@@ -202,6 +203,7 @@ class KalshiSource(OddsSource):
 
 class PolymarketSource(OddsSource):
     label, source = "Polymarket", "polymarket"
+    expected_s = 25.0
     GAMMA = "https://gamma-api.polymarket.com/events"
     HISTORY = "https://clob.polymarket.com/prices-history"
     TYPES = [("sprint-qualifying-pole", "SQ", "pole"), ("sprint-race-winner", "S", "win"),
@@ -245,6 +247,7 @@ class BookmakerSource(OddsSource):
     """bet365 / DraftKings / FanDuel lenktynių nugalėtojo koeficientai artimiausiam etapui.
     DeltaF1 juos atnaujina tik kas savaitę, todėl modelyje jie – tik atsarginis šaltinis."""
     label, source = "lažybininkai", "bookmakers"
+    expected_s = 3.0
     URL = "https://www.deltaf1.com/odds"
     COVERAGE = 0.97             # rodomi tik favoritai – jie kartu turi ~97 % tikimybės
 

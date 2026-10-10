@@ -60,6 +60,7 @@ def tag(text, keywords):
 
 class NewsSource(DataSource):
     label = "naujienos"
+    expected_s = 8.0
 
     def update(self, season):
         feeds = self.db.query("SELECT pavadinimas, adresas FROM naujienu_saltiniai WHERE aktyvus=1")

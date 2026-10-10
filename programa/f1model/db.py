@@ -47,9 +47,6 @@ CREATE TABLE IF NOT EXISTS model_params (
 CREATE TABLE IF NOT EXISTS predictions (
     id INTEGER PRIMARY KEY AUTOINCREMENT, created_at TEXT, season INTEGER, round INTEGER, session TEXT,
     driver TEXT, p1 REAL, p2 REAL, p3 REAL, p_top3 REAL, pick_pos INTEGER);
-CREATE TABLE IF NOT EXISTS zaideju_spejimai (
-    zaidejas TEXT, season INTEGER, round INTEGER, session TEXT, vieta INTEGER, spejimas TEXT,
-    rezultatas_excel TEXT, PRIMARY KEY (zaidejas, season, round, session, vieta));
 
 -- ŽINYNAI (redaguojami programoje; pradinės reikšmės – reference.py)
 CREATE TABLE IF NOT EXISTS trasos (
@@ -159,43 +156,6 @@ VIEWS = {
         FROM atnaujinimai a JOIN events e USING(season, round)""",
 }
 
-TABLE_INFO = {
-    "events": "Etapai (Grand Prix): metai, etapo nr., pavadinimas, šalis, trasa, data, formatas",
-    "sessions": "Sesijos: FP1–3, SQ, S, Q, R; pradžios laikas UTC, ar duomenys surinkti",
-    "results": "Rezultatai: vieta (finišas trasoje), oficiali vieta, starto vieta, statusas, taškai",
-    "practice": "Treniruotės: geriausias ratas, ilgų serijų tempas, padangų dėvėjimasis",
-    "weather": "Orai: jutiklių faktas, prognozės požymiai, galutinė lietaus tikimybė",
-    "odds": "Lažybų kainos prieš sesiją: win / pole / podium / top5; polymarket / kalshi / bookmakers",
-    "predictions": "Visi išsaugoti modelio spėjimai su tikimybėmis",
-    "model_params": "Paskutiniai išmokti modelio svoriai",
-    "zaideju_spejimai": "Jūsų ir draugų spėjimai iš Excel lentelės",
-    "trasos": "Žinynas: trasų charakteristikos (1–5), lenkimo sunkumas, koordinatės",
-    "trasu_sinonimai": "Žinynas: FastF1 vietovės pavadinimas -> trasa",
-    "komandos": "Žinynas: komandų spalvos (pagal raktinį žodį pavadinime)",
-    "zaidejai": "Žinynas: totalizatoriaus žaidėjai (Excel lapų pavadinimai)",
-    "gp_pavadinimai": "Žinynas: Excel GP pavadinimas -> FastF1 pavadinimo dalis",
-    "vairuotoju_vardai": "Žinynas: vardai lažybų rinkose -> vairuotojo trumpinys",
-    "trasu_konturai": "Trasų žemėlapiai: kontūras ir posūkiai (iš greičiausio kvalifikacijos rato)",
-    "atnaujinimai": "FIA: komandų atvežtos naujos bolido detalės kiekvienam etapui (2024+)",
-    "starto_rikiuote": "FIA: oficiali starto rikiuotė su baudomis (artėjančioms lenktynėms ir sprintams)",
-    "fia_dokumentai": "Jau apdoroti FIA dokumentai",
-    "naujienos": "F1 naujienos iš patikimų šaltinių su komandų ir temų žymėmis",
-    "naujienu_saltiniai": "Žinynas: naujienų šaltiniai (RSS)",
-    "naujienu_zymes": "Žinynas: naujienų temos ir jų raktažodžiai",
-    "kalbos": "Sąsajos kalbos (kodas -> pavadinimas)",
-    "vertimai": "Sąsajos tekstai kiekviena kalba (raktas, kalba, tekstas)",
-    "nustatymai": "Programos pasirinkimai, pvz. sąsajos kalba",
-    "duomenu_versija": "Modelio duomenų pakeitimų skaitiklis (pagal jį modelis persimoko)",
-    **{v: f"Rodinys: {d}" for v, d in [("v_rezultatai", "Rezultatai su GP pavadinimu, data ir orais"),
-                                 ("v_orai", "Orai: prognozė ir jutiklių faktas"),
-                                 ("v_treniruotes", "Treniruočių tempas su GP pavadinimu"),
-                                 ("v_vairuotojai", "Vairuotojų sezono suvestinė"),
-                                 ("v_koeficientai", "Lažybų tikimybės ir koeficientai šalia rezultato"),
-                                 ("v_modelio_spejimai", "Modelio spėjimai palyginti su tikru rezultatu"),
-                                 ("v_atnaujinimai", "Bolidų atnaujinimai su GP pavadinimu")]},
-}
-
-
 class Database:
     def __init__(self, path):
         self.path = Path(path)
@@ -265,19 +225,3 @@ class Database:
     def execute(self, sql, params=()):
         with self.connect() as con:
             con.execute(sql, params)
-
-    def read_only_query(self, sql, max_rows=10000):
-        """Vartotojo SQL užklausa TIK SKAITYMO režimu (duomenų pakeisti neįmanoma)."""
-        con = sqlite3.connect(f"{self.path.resolve().as_uri()}?mode=ro", uri=True)
-        try:
-            cur = con.execute(sql)
-            rows = cur.fetchmany(max_rows + 1)
-            return pd.DataFrame(rows[:max_rows], columns=[d[0] for d in cur.description or []]), len(rows) > max_rows
-        finally:
-            con.close()
-
-    def schema(self):
-        with self.connect() as con:
-            names = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type IN ('table','view') "
-                                               "AND name NOT LIKE 'sqlite_%' ORDER BY type DESC, name")]
-            return {n: [r[1] for r in con.execute(f"PRAGMA table_info({n})")] for n in names}

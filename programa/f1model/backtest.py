@@ -6,8 +6,10 @@ from . import model
 from .config import SEASON
 
 
-def run(data, picks, season=SEASON, progress=None):
-    """picks – žaidėjų spėjimai (ExcelPicks.read)."""
+def run(data, picks=None, season=SEASON, progress=None):
+    """picks – žaidėjų spėjimai (ExcelPicks.read) arba None (tik modelis)."""
+    if picks is None:
+        picks = pd.DataFrame(columns=["player", "round", "session", "pos", "predicted"])
     events = data.events[data.events.season == season]
     done = data.done_sessions([season], by_date=True)
     rows = []

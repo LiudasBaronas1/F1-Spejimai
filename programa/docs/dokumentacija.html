@@ -125,7 +125,7 @@ kalba.</p>
   <tr><td>Modelis</td><td><b>Kaip veikia</b> (5 žingsniai ir kas labiausiai lemia spėjimą), <b>Veiksniai ir svoriai</b>
       (išmokti svoriai ir daugikliai), <b>Parametrai</b>.</td></tr>
   <tr><td>Duomenys</td><td><b>Duomenų būklė</b> (kiekviena sezono sesija: oficialūs duomenys, preliminarus FIA rezultatas,
-      trūksta ar dar neįvyko), <b>SQL</b> ir <b>Žinynai</b> (redaguojami: trasos, komandų spalvos, vertimai ir kt.).</td></tr>
+      trūksta ar dar neįvyko) ir <b>Žinynai</b> (redaguojami: trasos, komandų spalvos, vertimai ir kt.).</td></tr>
 </table>
 <img class="shot" src="img/spejimas.jpg">
 <p class="cap">„Artimiausia sesija“: laikmatis, duomenų patikra ir siūlomas spėjimas.</p>
@@ -289,21 +289,36 @@ Išjungti: <code>automatinis_isjungti.bat</code>. Veikia tik kai kompiuteris įj
 <table>
   <tr><th style="width:30%">Modulis</th><th>Atsakomybė</th></tr>
   <tr><td>app.py</td><td>Kompozicijos šaknis – vienintelė vieta, kur kuriamos priklausomybės (duomenų bazė, nustatymai,
-      žinynai, šaltiniai). Testai sukuria App su laikina duomenų baze.</td></tr>
+      žinynai, šaltiniai, failų keliai, FastF1 talpykla). Importuojant moduliai nieko nekeičia. Testai sukuria App
+      su laikina duomenų baze ir talpykla.</td></tr>
+  <tr><td>config.py</td><td>Konstantos: keliai, sesijų tipai ir trukmės (iš jų – kada laukti duomenų ir orų langas).</td></tr>
   <tr><td>features.py</td><td>Požymių registras: kiekvienas veiksnys – funkcija su <code>@feature</code>. Naujas veiksnys
       pridedamas viena funkcija.</td></tr>
   <tr><td>model.py</td><td>Plackett-Luce modelis: svorių mokymas, simuliacija, geriausias trejetas.</td></tr>
   <tr><td>sources/</td><td>Duomenų šaltiniai (DataSource klasės): oficialūs duomenys, trasų žemėlapiai, orai, lažybos,
-      FIA dokumentai (<code>fia.py</code>: atnaujinimai ir starto rikiuotė iš PDF), naujienos (<code>news.py</code>, RSS).</td></tr>
-  <tr><td>briefing.py</td><td>Informacija sąsajai: komandų atnaujinimai, naujienų paieška, svarbiausi etapo faktai.</td></tr>
+      FIA dokumentai (<code>fia.py</code>: atnaujinimai, starto rikiuotė ir klasifikacija iš PDF), naujienos
+      (<code>news.py</code>, RSS). Priklausomybes (bendrą FIA rodyklę, talpyklos aplanką, kalibravimo failą) perduoda
+      <code>sources.registry</code>. Kiekvienas šaltinis pats nurodo apytikslę trukmę eigos skydeliui.</td></tr>
+  <tr><td>briefing.py, track_info.py, status.py</td><td>Informacija sąsajai: komandų atnaujinimai ir naujienos;
+      tvarkaraštis su orais ir trasos istorija; ar spėjimui reikalingi duomenys surinkti.</td></tr>
   <tr><td>db.py, reference.py</td><td>Duomenų bazė ir žinynai (trasos, komandos, žaidėjai...). Lentelė
       <code>duomenu_versija</code> (trigeriai) rodo, kada pasikeitė modelio duomenys – tik tada modelis persimoko.</td></tr>
   <tr><td>i18n.py, translations.py</td><td>Vertimai: <code>TranslationRepository</code> (DB lentelės <code>kalbos</code>,
       <code>vertimai</code>), <code>Translator</code> (tekstas pagal raktą, trūkstami – lietuviškai), pradiniai tekstai.
       Paleidžiant įrašomi tik trūkstami raktai, todėl programoje pataisyti tekstai išlieka.</td></tr>
   <tr><td>preferences.py</td><td>Programos pasirinkimai (pvz. kalba), DB lentelė <code>nustatymai</code>.</td></tr>
-  <tr><td>ui.py, ui_style.py, cli.py</td><td>Programos langas, jo išvaizda (be tekstų – juos perduoda ui.py), komandinė eilutė.</td></tr>
+  <tr><td>ui.py</td><td>Sąsajos įėjimas: sukuria App, vertėją ir <code>Controller</code> (atnaujinimas ir mokymas
+      foniniame sraute su eigos skydeliu), perduoda puslapiams <code>Ctx</code>.</td></tr>
+  <tr><td>views/</td><td>Puslapiai – po modulį kiekvienam meniu punktui (<code>render(c)</code>) ir bendros dalys
+      (<code>common.py</code>). Puslapiai programą pasiekia tik per siaurą <code>Ctx</code> sąsają.</td></tr>
+  <tr><td>ui_progress.py, ui_style.py, ui.css</td><td>Eigos skydelis; vaizdo komponentai ir stilius (be tekstų ir be
+      duomenų bazės).</td></tr>
+  <tr><td>cli.py</td><td>Komandinė eilutė ir automatinis spėjimas.</td></tr>
 </table>
+<h3>Kaip plėsti</h3>
+<p>Naujas veiksnys – funkcija su <code>@feature</code> (<code>features.py</code>); naujas duomenų šaltinis –
+<code>DataSource</code> klasė ir įrašas <code>sources.registry</code>; naujas puslapis – modulis <code>views/</code> su
+<code>render(c)</code> ir įrašas <code>views.pages()</code>. Esamo kodo keisti nereikia.</p>
 <h3>Nauja kalba ar naujas tekstas</h3>
 <p>Naujas tekstas: raktas su vertimais į <code>translations.py</code> ir <code>t("raktas")</code> sąsajoje. Nauja kalba:
 eilutė žinyne „Kalbos“ ir vertimai žinyne „Vertimai“ (arba <code>translations.py</code>); kodo keisti nereikia.</p>

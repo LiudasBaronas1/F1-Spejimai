@@ -1,21 +1,22 @@
 """F1 spėjimų programa (sąsaja). Paleidimas: darbalaukio nuoroda „F1 Spėjimai“ arba F1 Spėjimai.vbs.
-Visi sąsajos tekstai – per vertėją `t` (DB lentelė `vertimai`, žr. f1model/i18n.py).
 
-Meniu kairėje (ui_pages.py): Artimiausia sesija · Etapas · Sezonas · Naujienos · Modelis · Duomenys.
-Ilgi darbai (atnaujinimas, mokymas) vyksta foniniame sraute su eigos skydeliu (ui_progress.py)."""
+Šis failas tik sujungia dalis: sukuria `App` (kompozicijos šaknis), vertėją, `Controller` (foniniai darbai –
+atnaujinimas ir mokymas su eigos skydeliu) ir perduoda puslapiams (`views/`) siaurą `Ctx` sąsają.
+Išvaizda – ui.css ir ui_style.py; tekstai – DB lentelė `vertimai` (f1model/i18n.py)."""
 import os
 import threading
 from datetime import datetime, timezone
 
 import streamlit as st
 
-import ui_pages as pages
 import ui_progress as prog
 import ui_style as ui
+import views
 from f1model import features, model
 from f1model.app import App
 from f1model.config import SEASON
 from f1model.i18n import DEFAULT_LANGUAGE
+from views.common import local
 
 
 @st.cache_resource
@@ -24,61 +25,76 @@ def get_app():
 
 
 @st.cache_resource
-def memo():
-    """Apmokyti modeliai (pagal duomenų versiją)."""
-    return {}
+def shared_state():
+    """Vienos programos būsena tarp perkrovimų: apmokyti modeliai ir vykstantys foniniai darbai."""
+    return {"models": {}, "jobs": {}}
 
 
-@st.cache_resource
-def jobs():
-    """Vykstantys foniniai darbai – išlieka perkrovus puslapį ar perėjus į kitą meniu punktą."""
-    return {}
+class Controller:
+    """Ilgi darbai su eigos skydeliu. Priklausomybės (programa, vertėjas, būsena) perduodamos konstruktoriuje."""
 
+    def __init__(self, app, t, state):
+        self.app, self.t, self.models, self.jobs = app, t, state["models"], state["jobs"]
 
-def version(app):
-    """Keičiasi tik pasikeitus modelio duomenims arba Excel failui (ne kalbai ar išsaugotam spėjimui)."""
-    return app.db.data_version(), app.excel_path.stat().st_mtime if app.excel_path.exists() else 0
+    def version(self):
+        """Keičiasi tik pasikeitus modelio duomenims arba Excel failui (ne kalbai ar išsaugotam spėjimui)."""
+        x = self.app.excel_path
+        return self.app.db.data_version(), x.stat().st_mtime if x.exists() else 0
 
-
-def run_job(key, work, tracker, render):
-    """Paleidžia (arba prisijungia prie jau vykstančio) foninį darbą ir rodo jo eigą, kol baigsis."""
-    store = jobs()
-    if key not in store:
-        store[key] = prog.Job(work, tracker())
-    try:
-        return prog.follow(store[key], st.empty(), render)
-    finally:
-        if store.get(key) is not None and store[key].done:
-            store.pop(key, None)
-
-
-def trained(key, title, kinds, fit):
-    """Modelio mokymas su eigos skydeliu; rezultatas įsimenamas."""
-    store = memo()
-    if key not in store:
-        names = {"quali": t("progress.model_quali"), "race": t("progress.model_race")}
-        store[key] = run_job(key, fit, lambda: prog.TrainTracker(kinds),
-                             lambda job: prog.render_training(job, t, title, names))
-    return store[key]
-
-
-def load_model(app, ver):
-    def fit(tracker):
+    def _run(self, key, work, tracker, render):
+        """Paleidžia (arba prisijungia prie jau vykstančio) foninį darbą ir rodo jo eigą, kol baigsis."""
+        if key not in self.jobs:
+            self.jobs[key] = prog.Job(work, tracker())
         try:
-            app.excel().sync_to_db(app.db, app.dataset().events, SEASON)
-        except Exception:  # pvz. Excel atidarytas – ne kritiška
-            pass
-        data = app.dataset()
-        fitted = model.fit_all(data, progress=tracker)
-        model.save_weights(app.db, fitted)
-        return data, fitted
-    return trained(("model", ver), t("progress.training_title"), list(model.KINDS), fit)
+            return prog.follow(self.jobs[key], st.empty(), render)
+        finally:
+            if self.jobs.get(key) is not None and self.jobs[key].done:
+                self.jobs.pop(key, None)
 
+    def _trained(self, key, title, kinds, fit):
+        if key not in self.models:
+            names = {"quali": self.t("progress.model_quali"), "race": self.t("progress.model_race")}
+            self.models[key] = self._run(key, fit, lambda: prog.TrainTracker(kinds),
+                                         lambda job: prog.render_training(job, self.t, title, names))
+        return self.models[key]
 
-def weights_before(kind, upto):
-    return trained(("before", version(app), kind, upto), t("progress.training_before_title"), [kind],
-                   lambda tracker: model.fit_weights(kind, data, upto=upto,
-                                                     progress=lambda f, d="": tracker(f, kind, f, d))[0])
+    def model(self):
+        """(Dataset, apmokyti svoriai) dabartinei duomenų versijai."""
+        def fit(tracker):
+            data = self.app.dataset()
+            fitted = model.fit_all(data, progress=tracker)
+            model.save_weights(self.app.db, fitted)
+            return data, fitted
+        return self._trained(("model", self.version()), self.t("progress.training_title"), list(model.KINDS), fit)
+
+    def weights_before(self, data):
+        """Funkcija (rūšis, iki) -> svoriai, išmokti tik iš sesijų iki nurodyto laiko."""
+        def get(kind, upto):
+            return self._trained(("before", self.version(), kind, upto), self.t("progress.training_before_title"),
+                                 [kind], lambda tracker: model.fit_weights(
+                                     kind, data, upto=upto, progress=lambda f, d="": tracker(f, kind, f, d))[0])
+        return get
+
+    @property
+    def updating(self):
+        return "update" in self.jobs
+
+    def update(self):
+        """Duomenų atnaujinimas; grąžina [(šaltinis, klaida)]."""
+        sources = self.app.sources()
+        keys = [type(s).__name__ for s in sources]
+        prefs = self.app.preferences()
+        expected = {**{type(s).__name__: s.expected_s for s in sources}, **prog.load_durations(prefs)}
+        names = [self.t.get(f"source.{k}", s.label) for k, s in zip(keys, sources)]
+        descs = [self.t.get(f"source.{k}.desc", "") for k in keys]
+
+        def work(tracker):
+            errors = self.app.update(SEASON, progress=tracker)
+            prog.save_durations(prefs, tracker.durations())
+            prefs.set("atnaujinta", datetime.now(timezone.utc).isoformat())
+            return errors
+        return self._run("update", work, lambda: prog.UpdateTracker(keys, expected),
+                         lambda job: prog.render_update(job, self.t, names, descs))
 
 
 def request_update():
@@ -86,73 +102,52 @@ def request_update():
     st.rerun()
 
 
-def update_data():
-    """Duomenų atnaujinimas foniniame sraute; skydelis rodo kiekvieno šaltinio būseną ir laiką."""
-    sources = app.sources()
-    keys = [type(s).__name__ for s in sources]
-    names = [t.get(f"source.{k}", s.label) for k, s in zip(keys, sources)]
-    descs = [t.get(f"source.{k}.desc", "") for k in keys]
-    prefs = app.preferences()
-
-    def work(tracker):
-        errors = app.update(SEASON, progress=tracker)
-        prog.save_durations(prefs, tracker.durations())
-        prefs.set("atnaujinta", datetime.now(timezone.utc).isoformat())
-        return errors
-    return run_job("update", work, lambda: prog.UpdateTracker(keys, prog.load_durations(prefs)),
-                   lambda job: prog.render_update(job, t, names, descs))
+def sidebar(app, t, languages):
+    with st.sidebar:
+        st.caption(t("sidebar.update_info"))
+        last = app.preferences().get("atnaujinta")
+        ui.side_info(t("sidebar.last_update"), local(last, "%Y-%m-%d %H:%M") if last else t("sidebar.never"))
+        for name, err in st.session_state.get("update_errors", []):
+            st.warning(f"{name}: {err}")
+        st.divider()
+        st.selectbox(t("sidebar.language"), list(languages), format_func=languages.get, key="lang",
+                     on_change=lambda: app.preferences().set("kalba", st.session_state["lang"]))
+        if st.button(t("sidebar.quit"), width="stretch"):
+            st.warning(t("sidebar.quit_done"))
+            threading.Timer(1.0, os._exit, [0]).start()
 
 
-def save_language():
-    app.preferences().set("kalba", st.session_state["lang"])
+def main():
+    app = get_app()
+    languages = app.translations().languages()
+    if st.session_state.get("lang") not in languages:
+        saved = app.preferences().get("kalba", DEFAULT_LANGUAGE)
+        st.session_state["lang"] = saved if saved in languages else DEFAULT_LANGUAGE
+    t = app.translator(st.session_state["lang"])
+    st.set_page_config(page_title=t("app.title"), page_icon="ikona.ico", layout="wide")
+    ui.apply()
+    ui.header(t("brand.accent"), t("brand.subtitle", season=SEASON))
+    ctl = Controller(app, t, shared_state())
+
+    with st.sidebar:
+        if st.button(t("sidebar.update"), width="stretch", type="primary", key="update_side"):
+            st.session_state["update_requested"] = True
+    if st.session_state.pop("update_requested", False) or ctl.updating:
+        st.session_state["update_errors"] = [(name, str(e)) for name, e in ctl.update()]
+        app.reload_settings()
+        for k in [k for k in st.session_state if k.startswith("mult_")]:
+            del st.session_state[k]
+        st.rerun()
+
+    data, fitted = ctl.model()
+    for f in features.names():  # slankiklių reikšmės pritaikomos prieš skaičiuojant spėjimą
+        if f"mult_{f}" in st.session_state:
+            data.settings.multipliers[f] = float(st.session_state[f"mult_{f}"])
+    ctx = views.Ctx(app, t, data, fitted, ctl.weights_before(data), request_update)
+    nav = st.navigation([st.Page(lambda fn=fn: fn(ctx), title=t(f"nav.{key}"), url_path=key, default=i == 0)
+                         for i, (key, fn) in enumerate(views.pages())])
+    sidebar(app, t, languages)
+    nav.run()
 
 
-# ------------------------------------------------------------------ paleidimas
-
-app = get_app()
-languages = app.translations().languages()
-if st.session_state.get("lang") not in languages:
-    saved = app.preferences().get("kalba", DEFAULT_LANGUAGE)
-    st.session_state["lang"] = saved if saved in languages else DEFAULT_LANGUAGE
-t = app.translator(st.session_state["lang"])
-
-st.set_page_config(page_title=t("app.title"), page_icon="ikona.ico", layout="wide")
-ui.apply()
-ui.header(t("brand.accent"), t("brand.subtitle", season=SEASON))
-
-with st.sidebar:
-    if st.button(t("sidebar.update"), width="stretch", type="primary", key="update_side"):
-        st.session_state["update_requested"] = True
-if st.session_state.pop("update_requested", False) or "update" in jobs():
-    errors = update_data()
-    st.session_state["update_errors"] = [(name, str(e)) for name, e in errors]
-    app.reload_settings()
-    for k in [k for k in st.session_state if k.startswith("mult_")]:
-        del st.session_state[k]
-    st.rerun()
-
-data, fitted = load_model(app, version(app))
-for f in features.names():  # slankiklių reikšmės pritaikomos prieš skaičiuojant spėjimą
-    if f"mult_{f}" in st.session_state:
-        data.settings.multipliers[f] = float(st.session_state[f"mult_{f}"])
-
-ctx = pages.Ctx(app, t, data, fitted, version(app), weights_before, request_update)
-PAGES = [("next", pages.page_next), ("weekend", pages.page_weekend), ("season", pages.page_season),
-         ("news", pages.page_news), ("model", pages.page_model), ("data", pages.page_data)]
-nav = st.navigation([st.Page(lambda fn=fn: fn(ctx), title=t(f"nav.{key}"), url_path=key, default=key == "next")
-                     for key, fn in PAGES])
-
-with st.sidebar:
-    st.caption(t("sidebar.update_info"))
-    last = app.preferences().get("atnaujinta")
-    ui.side_info(t("sidebar.last_update"), pages.local(last, "%Y-%m-%d %H:%M") if last else t("sidebar.never"))
-    for name, err in st.session_state.get("update_errors", []):
-        st.warning(f"{name}: {err}")
-    st.divider()
-    st.selectbox(t("sidebar.language"), list(languages), format_func=languages.get, key="lang",
-                 on_change=save_language)
-    if st.button(t("sidebar.quit"), width="stretch"):
-        st.warning(t("sidebar.quit_done"))
-        threading.Timer(1.0, os._exit, [0]).start()
-
-nav.run()
+main()

@@ -1,12 +1,11 @@
 """Pradiniai sąsajos tekstai (įrašomi į DB lenteles `kalbos` ir `vertimai`, žr. i18n.py).
 
 Lietuviški požymių pavadinimai ir aprašymai imami iš features.py (@feature), sesijų – iš config.py,
-lentelių aprašymai – iš db.TABLE_INFO, todėl čia jų nekartojame. Naujas tekstas = naujas raktas su
+todėl čia jų nekartojame. Naujas tekstas = naujas raktas su
 vertimu kiekviena kalba; jei kurios nors kalbos trūksta, rodoma lietuviškai.
 """
 from . import features
 from .config import SESSION_NAMES_LT
-from .db import TABLE_INFO
 
 LANGUAGES = {"lt": "Lietuvių", "en": "English"}
 
@@ -126,7 +125,6 @@ UI = {
                        "realistic ceiling is about 3.2–3.4."),
     # --- duomenys
     "data.tab_status": ("Duomenų būklė", "Data status"),
-    "data.tab_sql": ("SQL", "SQL"),
     "data.tab_reference": ("Žinynai", "Reference tables"),
     "data.status_title": ("Šio sezono duomenys", "This season's data"),
     "data.status_sub": ("Kiekvieno etapo kiekviena sesija", "Every session of every round"),
@@ -399,32 +397,6 @@ UI = {
     "backtest.total": ("Taškai iš viso", "Total points"),
     "backtest.sessions": ("Kiekviena sesija", "Every session"),
     "backtest.by_type": ("Pagal sesijos tipą", "By session type"),
-    # --- SQL
-    "sql.tables": ("Lentelės ir rodiniai", "Tables and views"),
-    "sql.tables_sub": ("Rodiniai (v_...) – patogios lentelės su lietuviškais stulpeliais.",
-                       "Views (v_...) are convenient tables with Lithuanian column names."),
-    "sql.examples": ("Pavyzdinės užklausos", "Example queries"),
-    "sql.pick_example": ("— pasirinkite pavyzdį —", "— choose an example —"),
-    "sql.query": ("SQL užklausa", "SQL query"),
-    "sql.readonly": ("Užklausos vykdomos tik skaitymo režimu – duomenų pakeisti ar ištrinti neįmanoma.",
-                     "Queries run in read-only mode, so data cannot be changed or deleted."),
-    "sql.run": ("Vykdyti", "Run"),
-    "sql.error": ("Klaida: {error}", "Error: {error}"),
-    "sql.rows": ("{n} eilučių", "{n} rows"),
-    "sql.truncated": (" (rodomos tik pirmos 10 000)", " (only the first 10,000 are shown)"),
-    "sql.download": ("Atsisiųsti CSV", "Download CSV"),
-    "sql.example.round_results": ("Etapo rezultatai (pvz. 2026 m. 15 etapo lenktynės)",
-                                  "Round results (e.g. 2026 round 15 race)"),
-    "sql.example.driver_summary": ("Vairuotojų sezono suvestinė", "Driver season summary"),
-    "sql.example.driver_results": ("Vieno vairuotojo visi rezultatai (pvz. NOR)", "All results of one driver (e.g. NOR)"),
-    "sql.example.wet_winners": ("Sesijos, kai trasoje lijo, ir jų nugalėtojai", "Wet sessions and their winners"),
-    "sql.example.weather": ("Orai: prognozė ir faktas šiam sezonui", "Weather: forecast vs actual this season"),
-    "sql.example.best_at_track": ("Kas geriausias konkrečioje trasoje (pvz. Marina Bay)",
-                                  "Who is best at a given track (e.g. Marina Bay)"),
-    "sql.example.odds": ("Lažybų koeficientai paskutiniam etapui", "Betting odds for the latest round"),
-    "sql.example.tracks": ("Trasų žinynas", "Track reference"),
-    "sql.example.players": ("Draugų spėjimai vs rezultatas", "Friends' picks vs result"),
-    "sql.example.model": ("Modelio spėjimai vs tikrovė", "Model predictions vs reality"),
     # --- parametrai
     "params.refresh": ("Atnaujinti PARAMETRAI.md", "Regenerate PARAMETRAI.md"),
     "params.language_note": ("", "This report is generated in Lithuanian."),
@@ -453,6 +425,8 @@ UI = {
 UI.update({f"weekday.{i}": pair for i, pair in enumerate(zip(
     ["pirmadienis", "antradienis", "trečiadienis", "ketvirtadienis", "penktadienis", "šeštadienis", "sekmadienis"],
     ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]))})
+UI.update({f"weekday_short.{i}": pair for i, pair in enumerate(zip(
+    ["Pr", "An", "Tr", "Kt", "Pn", "Št", "Sk"], ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]))})
 
 SESSIONS_EN = {"FP1": "Practice 1", "FP2": "Practice 2", "FP3": "Practice 3", "SQ": "Sprint Qualifying",
                "S": "Sprint", "Q": "Qualifying", "R": "Race"}
@@ -489,42 +463,6 @@ FEATURES_EN = {
                     "scale. Helps tell who is really fighting for P3."),
 }
 
-TABLE_INFO_EN = {
-    "events": "Rounds (Grand Prix): season, round, name, country, track, date, format",
-    "sessions": "Sessions: FP1–3, SQ, S, Q, R; start time in UTC, whether data was collected",
-    "results": "Results: position (on-track finish), official position, grid, status, points",
-    "practice": "Practice: best lap, long-run pace, tyre wear",
-    "weather": "Weather: sensor facts, forecast features, final chance of rain",
-    "odds": "Betting prices before the session: win / pole / podium / top5; polymarket / kalshi / bookmakers",
-    "predictions": "All saved model predictions with probabilities",
-    "model_params": "Most recently learned model weights",
-    "zaideju_spejimai": "Your and your friends' picks from the Excel sheet",
-    "trasos": "Reference: track characteristics (1–5), overtaking difficulty, coordinates",
-    "trasu_sinonimai": "Reference: FastF1 location name -> track",
-    "komandos": "Reference: team colours (by keyword in the team name)",
-    "zaidejai": "Reference: prediction game players (Excel sheet names)",
-    "gp_pavadinimai": "Reference: Excel GP name -> part of the FastF1 name",
-    "vairuotoju_vardai": "Reference: names in betting markets -> driver code",
-    "trasu_konturai": "Track maps: outline and corners (from the fastest qualifying lap)",
-    "atnaujinimai": "FIA: new car parts declared by each team for every round (2024+)",
-    "starto_rikiuote": "FIA: official starting grid with penalties (upcoming races and sprints)",
-    "fia_dokumentai": "FIA documents already processed",
-    "naujienos": "F1 news from reliable sources, tagged with teams and topics",
-    "naujienu_saltiniai": "Reference: news sources (RSS)",
-    "naujienu_zymes": "Reference: news topics and their keywords",
-    "v_atnaujinimai": "View: car upgrades with GP name",
-    "kalbos": "Interface languages (code -> name)",
-    "vertimai": "Interface texts in every language (key, language, text)",
-    "nustatymai": "App preferences, e.g. interface language",
-    "v_rezultatai": "View: results with GP name, date and weather",
-    "v_orai": "View: weather forecast and sensor facts",
-    "v_treniruotes": "View: practice pace with GP name",
-    "v_vairuotojai": "View: driver season summary",
-    "v_koeficientai": "View: betting probabilities and odds next to the result",
-    "v_modelio_spejimai": "View: model predictions compared with the actual result",
-}
-
-
 def texts():
     """{raktas: {kalba: tekstas}} – viskas, kas įrašoma į lentelę `vertimai`."""
     out = {k: {lang: t for lang, t in (("lt", lt), ("en", en)) if t} for k, (lt, en) in UI.items()}
@@ -533,8 +471,6 @@ def texts():
         en_label, en_desc = FEATURES_EN.get(f.name, (None, None))
         out[f"feature.{f.name}.label"] = {"lt": f.label, **({"en": en_label} if en_label else {})}
         out[f"feature.{f.name}.desc"] = {"lt": f.description, **({"en": en_desc} if en_desc else {})}
-    for name, lt in TABLE_INFO.items():
-        out[f"tableinfo.{name}"] = {"lt": lt, **({"en": TABLE_INFO_EN[name]} if name in TABLE_INFO_EN else {})}
     return out
 
 

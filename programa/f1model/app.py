@@ -1,11 +1,13 @@
 """Kompozicijos šaknis: VIENINTELĖ vieta, kur sukuriamos ir sujungiamos priklausomybės
 (duomenų bazė, nustatymai, žinynai, vertimai, šaltiniai, failų keliai). Sąsaja, komandinė eilutė ir
-automatika naudoja `App`; testai gali sukurti `App` su testine duomenų baze ir kitais keliais."""
+automatika naudoja `App`; testai gali sukurti `App` su testine duomenų baze ir kitais keliais.
+Importuojant moduliai nieko nekeičia – aplankai ir FastF1 talpykla paruošiami čia, `App.create`."""
+import json
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import config, features, reference, settings, sources, translations
+from . import config, features, reference, report, settings, sources, translations
 from .briefing import Briefing
 from .dataset import Dataset
 from .db import Database
@@ -13,13 +15,14 @@ from .excel import ExcelPicks
 from .i18n import DEFAULT_LANGUAGE, TranslationRepository, Translator
 from .preferences import Preferences
 from .reference import Reference
+from .sources.weather import calibration_summary
 from .track_info import TrackInfo
 
 
-def install_starter_data(starter_dir, db_path):
+def install_starter_data(starter_dir, db_path, calibration_path):
     """Naujas vartotojas: nukopijuoja pradinę duomenų bazę ir orų kalibraciją (jei jų dar nėra),
     kad programa veiktų iškart, nelaukiant kelių sezonų duomenų parsiuntimo."""
-    for name, target in (("f1.db", db_path), ("oru_kalibracija.json", db_path.parent / "oru_kalibracija.json")):
+    for name, target in (("f1.db", db_path), ("oru_kalibracija.json", calibration_path)):
         if (starter_dir / name).exists() and not target.exists():
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(starter_dir / name, target)
@@ -32,17 +35,27 @@ class App:
     params_path: Path
     report_path: Path
     excel_path: Path
+    cache_dir: Path
+    calibration_path: Path
 
     @classmethod
-    def create(cls, db_path=config.DB_PATH, params_path=config.PARAMS_JSON,
-               report_path=config.REPORT_PATH, excel_path=config.EXCEL_PATH, starter_dir=config.STARTER_DIR):
-        """starter_dir – pradiniai duomenys, nukopijuojami, jei duomenų bazės dar nėra (None – nekopijuoti)."""
+    def create(cls, db_path=config.DB_PATH, params_path=config.PARAMS_JSON, report_path=config.REPORT_PATH,
+               excel_path=config.EXCEL_PATH, starter_dir=config.STARTER_DIR, cache_dir=config.CACHE_DIR,
+               calibration_path=None):
+        """starter_dir – pradiniai duomenys, nukopijuojami, jei duomenų bazės dar nėra (None – nekopijuoti).
+        calibration_path – orų kalibravimas (numatytasis – šalia duomenų bazės)."""
+        db_path = Path(db_path)
+        calibration_path = Path(calibration_path or db_path.parent / config.CALIBRATION_PATH.name)
+        db_path.parent.mkdir(parents=True, exist_ok=True)
         if starter_dir:
-            install_starter_data(Path(starter_dir), Path(db_path))
+            install_starter_data(Path(starter_dir), db_path, calibration_path)
+        from .sources.official import enable_cache   # FastF1 – tik kai programa tikrai paleidžiama
+        enable_cache(Path(cache_dir))
         db = Database(db_path)
         reference.seed(db)
         TranslationRepository(db).seed(translations.LANGUAGES, translations.texts())
-        return cls(db, settings.load(params_path, features.names()), params_path, report_path, excel_path)
+        return cls(db, settings.load(params_path, features.names()), params_path, report_path, excel_path,
+                   Path(cache_dir), calibration_path)
 
     # --- gamyklos (sukuria objektus su reikiamomis priklausomybėmis)
     def reference(self):
@@ -52,7 +65,7 @@ class App:
         return Dataset.load(self.db, self.settings)
 
     def sources(self):
-        return sources.registry(self.db, self.reference())
+        return sources.registry(self.db, self.reference(), self.cache_dir, self.calibration_path)
 
     def excel(self):
         return ExcelPicks(self.excel_path, self.reference())
@@ -65,8 +78,14 @@ class App:
     def briefing(self):
         return Briefing(self.db, self.reference())
 
-    def track_info(self, data):
-        return TrackInfo(data, self.db.query("SELECT * FROM trasos"))
+    @staticmethod
+    def track_info(data):
+        return TrackInfo(data)
+
+    def track_outline(self, circuit):
+        """(kontūro taškai, posūkiai) trasos žemėlapiui arba None (dar neparsiųsta)."""
+        r = self.db.query("SELECT taskai, posukiai FROM trasu_konturai WHERE trasa=?", (circuit,))
+        return (json.loads(r.taskai.iloc[0]), json.loads(r.posukiai.iloc[0])) if not r.empty else None
 
     def preferences(self):
         return Preferences(self.db)
@@ -94,6 +113,10 @@ class App:
     # --- dažni veiksmai
     def update(self, season=config.SEASON, only=None, progress=None):
         return sources.update_all(self.sources(), season, only, progress)
+
+    def write_report(self, data, fitted, last=None):
+        """PARAMETRAI.md; last = (GP, sesija, spėjimas, trasa) – paskutinis spėjimas."""
+        report.write(self.report_path, data, fitted, last, calibration_summary(self.calibration_path))
 
     def save_settings(self):
         settings.save(self.settings, self.params_path, features.names())

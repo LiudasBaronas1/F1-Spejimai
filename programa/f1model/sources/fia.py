@@ -16,6 +16,7 @@ from urllib.parse import quote, unquote
 
 import requests
 
+from ..config import ready_at
 from . import DataSource, log
 
 BASE = "https://www.fia.com"
@@ -187,9 +188,12 @@ class FiaDocuments:
 # ------------------------------------------------------------------ šaltiniai
 
 class _FiaSource(DataSource):
-    def __init__(self, db, ref, docs=None):
+    expected_s = 6.0
+
+    def __init__(self, db, ref, docs):
+        """docs – bendra FiaDocuments rodyklė (sources.registry ją sukuria vieną visiems FIA šaltiniams)."""
         super().__init__(db, ref)
-        self.docs = docs or FiaDocuments()
+        self.docs = docs
 
     def _done(self, kind):
         return set(map(tuple, self.db.query("SELECT season, round FROM fia_dokumentai WHERE tipas=?", (kind,)).values))
@@ -240,6 +244,7 @@ class GridSource(_FiaSource):
     """Starto rikiuotė su baudomis: artėjančioms lenktynėms ir sprintams, taip pat neseniai įvykusioms,
     jei rikiuotė nebuvo surinkta laiku, o oficialiuose rezultatuose starto vietų nėra."""
     label = "FIA starto rikiuotė"
+    expected_s = 15.0
     DOC_FOR = {"R": ("final_starting_grid", "provisional_starting_grid"),
                "S": ("final_sprint_grid", "provisional_sprint_grid", "final_sprint_starting_grid",
                      "provisional_sprint_starting_grid")}
@@ -282,7 +287,7 @@ class ClassificationSource(_FiaSource):
                "SQ": ("final_sprint_qualifying_classification", "provisional_sprint_qualifying_classification"),
                "S": ("final_sprint_classification", "provisional_sprint_classification"),
                "R": ("final_race_classification", "provisional_race_classification")}
-    MIN_AFTER_START = {"SQ": 50, "Q": 65, "S": 50, "R": 120}   # kada dokumentas paprastai jau paskelbtas
+    PAD_MIN = 5          # FIA klasifikacija paprastai paskelbiama netrukus po sesijos pabaigos
 
     def update(self, season):
         now = datetime.now(timezone.utc)
@@ -290,8 +295,7 @@ class ClassificationSource(_FiaSource):
             "SELECT s.round, s.session, s.date_utc, e.name FROM sessions s JOIN events e USING(season, round) "
             "WHERE s.season=? AND s.session IN ('SQ', 'Q', 'S', 'R') AND s.status NOT IN ('ok', 'fia') "
             "AND s.date_utc >= ?", (season, (now - timedelta(days=7)).isoformat()))
-        pending = pending[[datetime.fromisoformat(d) + timedelta(minutes=self.MIN_AFTER_START[c]) <= now
-                           for d, c in zip(pending.date_utc, pending.session)]]
+        pending = pending[[ready_at(d, c, self.PAD_MIN) <= now for d, c in zip(pending.date_utc, pending.session)]]
         numbers, teams = self._driver_numbers(season), self._teams(season)
         groups = pending.groupby(["round", "name"])
         for i, ((rnd, name), group) in enumerate(groups):

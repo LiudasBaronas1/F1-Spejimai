@@ -7,17 +7,20 @@ import fastf1
 import numpy as np
 import pandas as pd
 
-from ..config import CACHE_DIR, FASTF1_NAME_TO_CODE, PRACTICE, SEASON
+from ..config import FASTF1_NAME_TO_CODE, PRACTICE, SEASON, ready_at
 from . import DataSource
 
-# Apdorotų sesijų talpykla (be neapdorotų HTTP atsakymų – jie užimdavo šimtus MB)
-fastf1.Cache.enable_cache(str(CACHE_DIR), use_requests_cache=False)
 logging.getLogger("fastf1").setLevel(logging.ERROR)
 log = logging.getLogger("f1")
 
-# Kiek laiko po sesijos pradžios laukti, kol duomenys tampa prieinami (trukmė + ~15 min.)
-READY_AFTER_MIN = {"FP1": 75, "FP2": 75, "FP3": 75, "SQ": 60, "S": 60, "Q": 75, "R": 135}
 PAGE_PAUSE_S, RETRY_WAIT_S, MAX_RETRIES = 3, 120, 35   # archyvo puslapiai ir užklausų limitas
+
+
+def enable_cache(path):
+    """FastF1 apdorotų sesijų talpykla (be neapdorotų HTTP atsakymų – jie užimdavo šimtus MB).
+    Kviečia kompozicijos šaknis (App.create), ne importas."""
+    path.mkdir(parents=True, exist_ok=True)
+    fastf1.Cache.enable_cache(str(path), use_requests_cache=False)
 
 
 def _sec(td):
@@ -221,6 +224,7 @@ def update_history(db, season):
 
 class OfficialSource(DataSource):
     label = "oficialūs F1 duomenys"
+    expected_s = 15.0
 
     def update(self, season):
         if season < SEASON:
@@ -229,8 +233,7 @@ class OfficialSource(DataSource):
         now = datetime.now(timezone.utc)
         todo = self.db.query("SELECT s.round, s.session, s.date_utc, e.name FROM sessions s JOIN events e "
                              "USING(season, round) WHERE s.season=? AND s.status!='ok' ORDER BY s.date_utc", (season,))
-        todo = todo[[datetime.fromisoformat(d) + timedelta(minutes=READY_AFTER_MIN[c]) <= now
-                     for d, c in zip(todo.date_utc, todo.session)]]
+        todo = todo[[ready_at(d, c) <= now for d, c in zip(todo.date_utc, todo.session)]]
         for i, (_, s) in enumerate(todo.iterrows()):
             self.progress(i, len(todo), f"{season} R{s['round']:02d} {s['name']} · {s.session}")
             try:

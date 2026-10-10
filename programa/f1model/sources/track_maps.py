@@ -11,6 +11,7 @@ import tempfile
 import numpy as np
 
 from . import DataSource, log
+from .official import enable_cache
 
 N_POINTS = 250
 
@@ -79,6 +80,11 @@ def outline(session):
 
 class TrackMapSource(DataSource):
     label = "trasų žemėlapiai"
+    expected_s = 3.0
+
+    def __init__(self, db, ref, cache_dir):
+        super().__init__(db, ref)
+        self.cache_dir = cache_dir      # įprasta FastF1 talpykla, grąžinama baigus
 
     def update(self, season):
         import fastf1
@@ -109,6 +115,5 @@ class TrackMapSource(DataSource):
                                                       sezonas=yr, etapas=rnd)])
                 log.info("Trasos kontūras: %s (%s posūkiai)", circ, len(corners))
         finally:
-            from ..config import CACHE_DIR
-            fastf1.Cache.enable_cache(str(CACHE_DIR), use_requests_cache=False)  # grąžiname įprastą talpyklą
+            enable_cache(self.cache_dir)  # grąžiname įprastą talpyklą
             shutil.rmtree(tmp, ignore_errors=True)

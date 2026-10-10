@@ -10,9 +10,6 @@ import time
 import ui_style as ui
 
 TICK_S = 0.25
-DEFAULT_SOURCE_S = {"OfficialSource": 15, "ClassificationSource": 6, "TrackMapSource": 3, "TrackWeatherSource": 6,
-                    "WeatherSource": 18, "UpgradeSource": 6, "GridSource": 15, "BookmakerSource": 3,
-                    "KalshiSource": 45, "PolymarketSource": 25, "NewsSource": 8}
 DURATIONS_KEY = "saltiniu_trukmes"
 
 
@@ -63,7 +60,9 @@ class UpdateTracker:
     """Iš `sources.Progress` įvykių kaupia kiekvieno šaltinio būseną ir laikus (kviečiama foniniame sraute)."""
 
     def __init__(self, keys, expected):
-        self.keys, self.expected = keys, [expected.get(k, DEFAULT_SOURCE_S.get(k, 10)) for k in keys]
+        """keys – šaltinių raktai; expected – {raktas: laukiama trukmė s} (išmatuota anksčiau arba šaltinio
+        numatytoji DataSource.expected_s)."""
+        self.keys, self.expected = keys, [expected[k] for k in keys]
         self.status = ["wait"] * len(keys)
         self.started, self.finished = [None] * len(keys), [None] * len(keys)
         self.current, self.step, self.detail, self.item_t0 = None, (0, 0), "", None

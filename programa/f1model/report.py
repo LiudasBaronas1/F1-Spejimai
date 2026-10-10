@@ -1,5 +1,5 @@
-"""Sugeneruoja PARAMETRAI.md – visi požymiai, jų svoriai, nustatymai ir žinynai (iš registrų ir DB)."""
-import json
+"""Sugeneruoja PARAMETRAI.md – visi požymiai, jų svoriai, nustatymai ir žinynai (iš registrų ir DB).
+Kviečiama per App.write_report (ten perduodamas failo kelias ir orų kalibravimo santrauka)."""
 from datetime import datetime
 
 from . import features, model
@@ -8,10 +8,9 @@ from .settings import EDITABLE
 from .sources import odds, weather
 
 
-def _calibration_text():
-    if not weather.CALIBRATION_FILE.exists():
+def _calibration_text(c):
+    if not c:
         return ""
-    c = json.loads(weather.CALIBRATION_FILE.read_text(encoding="utf-8"))
     return (f" Kalibruota pagal {c['sessions']} sesijų ({c['wet_sessions']} lietingų); paklaida (Brier) "
             f"{c['brier_new']:.3f}, ankstesnio metodo {c['brier_old']:.3f}, vien vidurkio {c['brier_base']:.3f}.")
 
@@ -21,8 +20,9 @@ def _table(header, rows):
            ["| " + " | ".join(map(str, r)) + " |" for r in rows]
 
 
-def write(path, data, fitted, last=None):
-    """path – PARAMETRAI.md; fitted = model.fit_all(data); last = (GP, sesija, spėjimas, trasa)."""
+def write(path, data, fitted, last=None, calibration=None):
+    """path – PARAMETRAI.md; fitted = model.fit_all(data); last = (GP, sesija, spėjimas, trasa);
+    calibration – orų kalibravimo santrauka (weather.calibration_summary)."""
     S, tracks = data.settings, data.ref.tracks
     (wq, nq), (wr, nr) = fitted["quali"], fitted["race"]
     eq, er = model.effective_weights(wq, S), model.effective_weights(wr, S)
@@ -46,7 +46,7 @@ def write(path, data, fitted, last=None):
           "- **Rezultatai**: lenktynės/sprintai vertinami pagal finišą trasoje (baudos po finišo neįskaičiuojamos).",
           "- **Orai**: įvykusioms sesijoms – FastF1 trasos jutikliai; artėjančioms – Open-Meteo prognozė "
           f"(trasa + 4 taškai po {weather.REGION_KM} km, ±{weather.WINDOW_PAD_H} val.), kalibruota pagal tai, "
-          "ar trasoje iš tikrųjų lijo." + _calibration_text(),
+          "ar trasoje iš tikrųjų lijo." + _calibration_text(calibration),
           f"- **Lažybų rinkos**: Kalshi, Polymarket (svoriai `lazybu_saltiniu_svoriai`), lažybininkai – atsarginis; "
           f"paskutinė kaina prieš sesiją, min. apyvarta {odds.MIN_VOLUME_USD} $.",
           "- **Taškų optimizavimas**: tikėtini taškai = P(TOP3) + P(tiksli vieta); perrenkami visi trejetai.", "",

@@ -21,11 +21,6 @@ class DatabaseTest(unittest.TestCase):
         row = self.db.query("SELECT track_rain_frac, fc_pop FROM weather").iloc[0]
         self.assertEqual((row.track_rain_frac, row.fc_pop), (0.5, 0.7))
 
-    def test_read_only_query_cannot_write(self):
-        with self.assertRaises(Exception):
-            self.db.read_only_query("DELETE FROM trasos")
-        self.assertGreater(len(self.db.query("SELECT * FROM trasos")), 0)
-
     def test_reference_tables_seeded_once(self):
         self.db.execute("DELETE FROM komandos WHERE raktazodis='haas'")
         reference.seed(self.db)  # netuščios lentelės neperrašomos
@@ -35,12 +30,32 @@ class DatabaseTest(unittest.TestCase):
         starter = self.tmp / "start"
         starter.mkdir()
         (starter / "f1.db").write_bytes(self.db.path.read_bytes())
-        target = self.tmp / "naujas" / "f1.db"
-        app.install_starter_data(starter, target)
+        target, cal = self.tmp / "naujas" / "f1.db", self.tmp / "naujas" / "oru_kalibracija.json"
+        app.install_starter_data(starter, target, cal)
         self.assertTrue(target.exists())
         target.write_bytes(b"pakeista")
-        app.install_starter_data(starter, target)  # esami vartotojo duomenys neperrašomi
+        app.install_starter_data(starter, target, cal)  # esami vartotojo duomenys neperrašomi
         self.assertEqual(target.read_bytes(), b"pakeista")
+
+
+class CompositionTest(unittest.TestCase):
+    def test_sources_get_injected_dependencies(self):
+        app, tmp = temp_app()
+        srcs = {type(s).__name__: s for s in app.sources()}
+        fia_docs = {id(srcs[n].docs) for n in ("UpgradeSource", "GridSource", "ClassificationSource")}
+        self.assertEqual(len(fia_docs), 1)                                   # viena bendra FIA rodyklė
+        self.assertEqual(srcs["WeatherSource"].calibration_path, tmp / "oru_kalibracija.json")
+        self.assertEqual(srcs["TrackMapSource"].cache_dir, tmp / "fastf1_cache")
+        self.assertTrue(all(s.expected_s > 0 for s in srcs.values()))
+
+    def test_report_written_to_injected_path(self):
+        from tests.helpers import synthetic_season
+        from f1model import model
+        app, tmp = temp_app()
+        synthetic_season(app.db, rounds=6)
+        data = app.dataset()
+        app.write_report(data, model.fit_all(data))
+        self.assertIn("Modelio parametrai", (tmp / "PARAMETRAI.md").read_text(encoding="utf-8"))
 
 
 class ReferenceTest(unittest.TestCase):
@@ -54,6 +69,7 @@ class ReferenceTest(unittest.TestCase):
         self.assertLess(t.similarity("Monza", "Monaco"), t.similarity("Monza", "Spa-Francorchamps"))
         self.assertEqual(t.circuit("Monte Carlo"), "Monaco")
         self.assertEqual(t.overtaking("Monte Carlo"), 5)
+        self.assertEqual(t.character("Monte Carlo")["lenkimo_sunkumas"], 5)
 
     def test_team_colors_and_reference_lists(self):
         self.assertEqual(self.ref.team_color("Red Bull Racing"), "#3671C6")

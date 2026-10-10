@@ -94,11 +94,15 @@ def seed(db):
             db.write(table, rows)
 
 
+CHARACTER = ("greitis", "prispaudimas", "padangos", "lenkimo_sunkumas", "gatve")   # rodoma sąsajoje
+
+
 class TrackCatalog:
     def __init__(self, tracks, aliases):
         t = tracks.set_index("trasa")
         self.profiles = {c: np.array(r[["greitis", "prispaudimas", "gatve", "padangos"]], dtype=float)
                          for c, r in t.iterrows()}
+        self._character = {c: {k: float(r[k]) for k in CHARACTER if k in r and r[k] == r[k]} for c, r in t.iterrows()}
         self._overtaking = t.lenkimo_sunkumas.to_dict()
         self._coords = {c: (r.platuma, r.ilguma) for c, r in t.iterrows() if r.platuma == r.platuma}
         self.aliases = aliases
@@ -125,6 +129,10 @@ class TrackCatalog:
 
     def coords(self, location):
         return self._coords.get(self.circuit(location))
+
+    def character(self, location):
+        """{charakteristika: reikšmė 1–5 (gatvė – 0/0.5/1)}; tuščias, jei trasos žinyne nėra."""
+        return self._character.get(self.circuit(location), {})
 
 
 @dataclass

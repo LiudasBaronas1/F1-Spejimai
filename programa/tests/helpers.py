@@ -12,7 +12,8 @@ def temp_app():
     """App su laikinais failais (tikri duomenys nepaliečiami). Grąžina (app, tmp katalogas)."""
     tmp = Path(tempfile.mkdtemp(prefix="f1test_"))
     return App.create(db_path=tmp / "f1.db", params_path=tmp / "parametrai.json",
-                      report_path=tmp / "PARAMETRAI.md", excel_path=tmp / "nera.xlsx", starter_dir=None), tmp
+                      report_path=tmp / "PARAMETRAI.md", excel_path=tmp / "nera.xlsx", starter_dir=None,
+                      cache_dir=tmp / "fastf1_cache"), tmp
 
 
 def synthetic_season(db, season=2026, rounds=8, noise=None):
