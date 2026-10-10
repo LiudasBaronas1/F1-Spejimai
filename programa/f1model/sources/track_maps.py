@@ -96,7 +96,8 @@ class TrackMapSource(DataSource):
         tmp = tempfile.mkdtemp(prefix="f1_konturai_")
         try:
             fastf1.Cache.enable_cache(tmp, use_requests_cache=False)
-            for circ, (yr, rnd) in todo.items():
+            for i, (circ, (yr, rnd)) in enumerate(todo.items()):
+                self.progress(i, len(todo), circ)
                 try:
                     s = fastf1.get_session(yr, rnd, "Q")
                     s.load(laps=True, telemetry=True, weather=False, messages=False)

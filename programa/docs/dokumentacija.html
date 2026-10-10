@@ -89,7 +89,9 @@ Baudos, skirtos jau po finišo, neįskaičiuojamos – taip, kaip numato mūsų 
       Pirmą kartą programa pati įdiegs, ko reikia (Python, jei jo nėra, ir bibliotekas; 2–5 min., reikia interneto)
       ir sukurs darbalaukio nuorodą <b>„F1 Spejimai“</b> – vėliau paleiskite per ją. Atsidarys atskiras langas.</li>
   <li><b>Atnaujinkite duomenis.</b> Kairėje paspauskite <b>„Atnaujinti duomenis“</b>. Programa parsisiųs naujausius
-      rezultatus, treniruočių laikus, orų prognozę ir lažybų rinkų kainas (apie 1 minutę).</li>
+      rezultatus, treniruočių laikus, orų prognozę ir lažybų rinkų kainas (apie 1 minutę). Eigos juosta rodo, kiek
+      procentų atlikta, kurį šaltinį programa tuo metu siunčiasi ir kurį etapą ar sesiją. Po atnaujinimo modelis
+      persimoko – tai irgi rodoma eigos juosta.</li>
   <li><b>Pasirinkite sesiją.</b> Viršuje – <b>Metai</b>, <b>Grand Prix</b> ir <b>Etapas</b>. Atidarius programą automatiškai
       parenkama artimiausia sesija.</li>
   <li><b>Perskaitykite siūlomą spėjimą.</b> Trys kortelės (1, 2, 3 vieta) – tai siūlomas trejetas. Prie kiekvieno
@@ -224,14 +226,17 @@ HAD kvalifikavosi 3-as, bet dėl baudos startavo 8-as – modelis tai žino.</p>
 <p>Biržų kainos atspindi tūkstančių žmonių nuomonę ir naujausią informaciją. Modelis ima paskutinę kainą prieš sesiją ir
 sujungia ją su kitais veiksniais. Kiek pasitikėti rinka, modelis išmoksta pats: bandyta rinkai suteikti dar daugiau svorio
 (×1,5, ×2, be apribojimų), tačiau visais atvejais rezultatai pablogėjo – todėl paliktas išmoktas svoris.</p>
+<p>Jei kainos buvo parsiųstos anksčiau nei prasidėjo sesija (pvz. sprinto kainos dar prieš sprinto kvalifikaciją), po sesijos
+jos automatiškai parsiunčiamos iš naujo – taip mokymuisi naudojama tikra paskutinė kaina. Podiumo ir TOP5 rinkose, kur
+kainos yra tik dalies vairuotojų, tikimybės nebedidinamos dirbtinai (anksčiau 80 % kaina galėjo virsti 99 %).</p>
 </section>
 
 <section>
 <h2>6. Kiek modelis tikslus</h2>
 <p>Modelis tikrinamas sąžiningai: kiekvienai praeities sesijai jis spėja <b>tik su tais duomenimis, kurie buvo žinomi prieš ją</b>,
-ir rezultatas palyginamas su tikru. 2026 m. sezone (iki Kuala Lumpuro) modelis surinko <b>113 taškų</b> – daugiau nei
-bet kuris mūsų totalizatoriaus žaidėjas.</p>
-<p>2025–2026 m. (101 sesija) modelis vidutiniškai surenka <b>apie 3 taškus iš 6</b> per sesiją. Tiksliai atspėti visą TOP3
+ir rezultatas palyginamas su tikru. 2026 m. sezone (iki Singapūro sprinto, 44 sesijos) modelis surinko <b>127 taškus</b> –
+daugiau nei bet kuris mūsų totalizatoriaus žaidėjas.</p>
+<p>2025–2026 m. (104 sesijos) modelis vidutiniškai surenka <b>apie 3 taškus iš 6</b> per sesiją. Tiksliai atspėti visą TOP3
 pavyksta retai: net lažybų rinkos favoritas laimi tik apie 45 % sesijų. Reali viršutinė riba – maždaug 3,2–3,4 taško per
 sesiją, nes F1 rezultatams didelę įtaką daro atsitiktinumas (avarijos, gedimai, saugos automobilis, lietus).</p>
 <h3>Kas išbandyta ir atmesta</h3>

@@ -68,7 +68,8 @@ class NewsSource(DataSource):
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         first_seen = dict(self.db.query("SELECT url, paskelbta FROM naujienos").values)
         rows = []
-        for name, url in feeds.values:
+        for i, (name, url) in enumerate(feeds.values):
+            self.progress(i, len(feeds), name)
             try:
                 r = requests.get(url, headers=HEADERS, timeout=30)
                 r.raise_for_status()

@@ -17,10 +17,15 @@ class DataSource(ABC):
 
     def __init__(self, db, ref):
         self.db, self.ref = db, ref
+        self.report = lambda frac, detail="": None   # update_all() pakeičia į eigos juostos atnaujinimą
 
     @abstractmethod
     def update(self, season: int) -> None:
         """Surenka trūkstamus/naujausius sezono duomenis į DB."""
+
+    def progress(self, i, n, detail=""):
+        """Kviečiama cikluose: atlikta i iš n (eigos juostai sąsajoje)."""
+        self.report(min(1.0, i / n) if n else 1.0, detail)
 
 
 def get_json(url, params=None, tries=6, **kw):
@@ -47,16 +52,21 @@ def registry(db, ref):
                                      GridSource, BookmakerSource, KalshiSource, PolymarketSource, NewsSource)]
 
 
-def update_all(sources, season, only=None):
-    """Atnaujina šaltinius; vieno klaida nestabdo kitų. Grąžina [(šaltinis, klaida)]."""
+def update_all(sources, season, only=None, progress=None):
+    """Atnaujina šaltinius; vieno klaida nestabdo kitų. Grąžina [(šaltinis, klaida)].
+    progress(dalis 0..1, šaltinis, detalė) – eigos juostai (nebūtina)."""
     errors = []
-    for src in sources:
-        if only and src.label not in only:
-            continue
+    chosen = [s for s in sources if not only or s.label in only]
+    for k, src in enumerate(chosen):
+        if progress:
+            src.report = lambda frac, detail="", k=k, src=src: progress((k + frac) / len(chosen), src, detail)
+            src.report(0.0)
         try:
             log.info("Atnaujinu: %s", src.label)
             src.update(season)
         except Exception as e:  # tinklo/API klaidos – tęsiame su kitais šaltiniais
             log.warning("%s: nepavyko (%s)", src.label, e)
             errors.append((src.label, e))
+    if progress and chosen:
+        progress(1.0, chosen[-1], "")
     return errors

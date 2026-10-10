@@ -62,21 +62,52 @@ def get_app():
     return App.create()
 
 
-@st.cache_resource(show_spinner=False)
-def load(_app, version):
-    try:
-        _app.excel().sync_to_db(_app.db, _app.dataset().events, SEASON)
-    except Exception:  # pvz. Excel atidarytas – ne kritiška
-        pass
-    data = _app.dataset()
-    fitted = model.fit_all(data)
-    model.save_weights(_app.db, fitted)
-    return data, fitted
+@st.cache_resource
+def memo():
+    """Apmokyti modeliai (išvaloma kartu su st.cache_resource.clear()). Ne @st.cache_resource funkcijos,
+    nes jų viduje negalima atnaujinti eigos juostos."""
+    return {}
 
 
-@st.cache_resource(show_spinner=False)
-def weights_before(version, kind, upto, _data):
-    return model.fit_weights(kind, _data, upto=upto)[0]
+def cached(key, text, compute):
+    """compute(progress) skaičiuojamas tik pirmą kartą; tuo metu rodoma eigos juosta."""
+    store = memo()
+    if key not in store:
+        bar = st.progress(0.0, text=text)
+        store[key] = compute(lambda f: bar.progress(min(f, 1.0), text=f"{text} {f:.0%}"))
+        bar.empty()
+    return store[key]
+
+
+def load(app, version):
+    def compute(progress):
+        try:
+            app.excel().sync_to_db(app.db, app.dataset().events, SEASON)
+        except Exception:  # pvz. Excel atidarytas – ne kritiška
+            pass
+        data = app.dataset()
+        fitted = model.fit_all(data, progress=progress)
+        model.save_weights(app.db, fitted)
+        return data, fitted
+    return cached(("model", version), t("spinner.training"), compute)
+
+
+def weights_before(version, kind, upto, data):
+    return cached(("before", version, kind, upto), t("spinner.training_before"),
+                  lambda progress: model.fit_weights(kind, data, upto=upto, progress=progress)[0])
+
+
+def update_data():
+    """Duomenų atnaujinimas su eigos juosta: bendra dalis, šaltinis ir ką jis dabar renka."""
+    bar = st.progress(0.0, text=t("sidebar.updating"))
+
+    def show(frac, src, detail):
+        name = t.get(f"source.{type(src).__name__}", src.label)
+        bar.progress(min(frac, 1.0), text=t("progress.update", pct=f"{frac:.0%}", source=name)
+                     + (f" · {detail}" if detail else ""))
+    errors = app.update(SEASON, progress=show)
+    bar.empty()
+    return errors
 
 
 def local(iso, fmt="%m-%d %H:%M"):
@@ -153,9 +184,8 @@ with st.sidebar:
                  on_change=save_language)
     st.divider()
     if st.button(t("sidebar.update"), width="stretch", type="primary", help=t("sidebar.update_help")):
-        with st.spinner(t("sidebar.updating")):
-            errors = app.update(SEASON)
-            app.reload_settings()
+        errors = update_data()
+        app.reload_settings()
         st.cache_resource.clear()
         for k in [k for k in st.session_state if k.startswith("mult_")]:
             del st.session_state[k]
@@ -168,8 +198,7 @@ with st.sidebar:
         st.warning(t("sidebar.quit_done"))
         threading.Timer(1.0, os._exit, [0]).start()
 
-with st.spinner(t("spinner.training")):
-    data, fitted = load(app, version(app))
+data, fitted = load(app, version(app))
 S, ref = data.settings, data.ref
 for f in features.names():  # slankiklių reikšmės pritaikomos prieš skaičiuojant spėjimą
     if f"mult_{f}" in st.session_state:
@@ -205,8 +234,7 @@ with tab["predict"]:
     srow, ev, kind = ev_sess.loc[session], evs.loc[rnd], kind_of(session)
     done = srow.status == "ok"
     if done:  # įvykusi sesija – spėjame taip, lyg būtume prieš ją
-        with st.spinner(t("spinner.training_before")):
-            w = weights_before(version(app), kind, srow.date_utc, data)
+        w = weights_before(version(app), kind, srow.date_utc, data)
         out = model.predict(data, season, rnd, session, before=srow.date_utc, weights=w)
     else:
         out = model.predict(data, season, rnd, session, weights=fitted[kind][0])

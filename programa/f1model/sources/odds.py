@@ -80,11 +80,16 @@ class OddsSource(DataSource):
         sess["d"] = pd.to_datetime(sess.date_utc, utc=True, format="ISO8601")
         known = set(self.db.query("SELECT driver FROM results WHERE season=? UNION SELECT driver FROM practice "
                              "WHERE season=?", (season, season)).driver)
-        stored = self.db.query("SELECT DISTINCT round, session, market, event_slug FROM odds WHERE season=? AND source=?",
-                          (season, self.source))
+        stored = self.db.query("SELECT o.round, o.session, o.market, o.event_slug FROM odds o JOIN sessions s "
+                               "USING(season, round, session) WHERE o.season=? AND o.source=? "
+                               "GROUP BY 1, 2, 3, 4 HAVING MAX(o.fetched_at) >= MAX(s.date_utc)",
+                               (season, self.source))
+        # surinkta po sesijos pradžios = galutinė kaina; surinktos anksčiau (pvz. sprinto – prieš SQ) perrenkamos
         have = set(zip(stored["round"], stored.session, stored.market))
         now = datetime.now(timezone.utc)
-        for ev in self.events(season, skip=set(stored.event_slug)):
+        events = list(self.events(season, skip=set(stored.event_slug)))
+        for i, ev in enumerate(events):
+            self.progress(i, len(events), f"{ev.session} {ev.market} {ev.date:%m-%d}")
             cand = sess[(sess.session == ev.session) & ((sess.d.dt.normalize() - ev.date.normalize()).abs()
                                                         <= pd.Timedelta(days=1))]
             if cand.empty:
@@ -115,9 +120,11 @@ class OddsSource(DataSource):
         df = pd.DataFrame(rows).drop_duplicates("driver")
         if df.price.sum() <= 0:
             return 0
-        df["prob"] = df.price / df.price.sum() * (total or MARKET_TOTAL.get(market, 1.0))
-        if market in MARKET_TOTAL:
-            df["prob"] = df.prob.clip(upper=0.99)
+        target = total or MARKET_TOTAL.get(market, 1.0)
+        if market in MARKET_TOTAL:  # kainos ne visiems vairuotojams – tik mažinama, kad 0.80 netaptų 0.99
+            df["prob"] = (df.price * min(1.0, target / df.price.sum())).clip(upper=0.99)
+        else:
+            df["prob"] = df.price / df.price.sum() * target
         df = df.assign(season=season, round=rnd, session=session, market=market, source=self.source,
                        event_slug=ident, fetched_at=datetime.now(timezone.utc).isoformat())
         self.db.write("odds", df.to_dict("records"), replace_where=(

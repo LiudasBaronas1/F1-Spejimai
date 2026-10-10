@@ -88,8 +88,8 @@ class App:
         return {**reference.DEFAULTS, **translations.default_rows()}[table]
 
     # --- dažni veiksmai
-    def update(self, season=config.SEASON, only=None):
-        return sources.update_all(self.sources(), season, only)
+    def update(self, season=config.SEASON, only=None, progress=None):
+        return sources.update_all(self.sources(), season, only, progress)
 
     def save_settings(self):
         settings.save(self.settings, self.params_path, features.names())

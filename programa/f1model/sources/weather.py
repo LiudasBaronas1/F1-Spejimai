@@ -58,7 +58,8 @@ class TrackWeatherSource(DataSource):
         if todo.empty:
             return
         schedule = fastf1.get_event_schedule(season, include_testing=False)  # vieną kartą per sezoną
-        for _, s in todo.iterrows():
+        for i, (_, s) in enumerate(todo.iterrows()):
+            self.progress(i, len(todo), f"{season} R{s['round']:02d} {s.session}")
             try:
                 session = schedule.get_event_by_round(int(s["round"])).get_session(s.session)
                 w = pd.DataFrame(_api.weather_data(session.api_path))
@@ -162,7 +163,9 @@ class WeatherSource(DataSource):
         loc = self.db.query("SELECT round, location FROM events WHERE season=?", (season,)).set_index("round").location
         sess = self.db.query("SELECT s.round, s.session, s.date_utc, w.fc_pop, w.track_rain_frac FROM sessions s "
                         "LEFT JOIN weather w USING(season, round, session) WHERE s.season=?", (season,))
-        for rnd, g in sess[sess.session.isin(DURATION_H)].groupby("round"):
+        rounds = sess[sess.session.isin(DURATION_H)].groupby("round")
+        for i, (rnd, g) in enumerate(rounds):
+            self.progress(i, rounds.ngroups, f"{season} R{rnd:02d}")
             starts = pd.to_datetime(g.date_utc, utc=True, format="ISO8601")
             live = starts.max() > now - timedelta(days=LIVE_DAYS)
             need = g if (force or live) else g[g.fc_pop.isna()]   # senų etapų prognozė nekinta

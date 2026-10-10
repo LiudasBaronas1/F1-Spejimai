@@ -229,9 +229,10 @@ class OfficialSource(DataSource):
         now = datetime.now(timezone.utc)
         todo = self.db.query("SELECT round, session, date_utc FROM sessions WHERE season=? AND status!='ok' "
                         "ORDER BY date_utc", (season,))
-        for _, s in todo.iterrows():
-            if datetime.fromisoformat(s.date_utc) + timedelta(minutes=READY_AFTER_MIN[s.session]) > now:
-                continue
+        todo = todo[[datetime.fromisoformat(d) + timedelta(minutes=READY_AFTER_MIN[c]) <= now
+                     for d, c in zip(todo.date_utc, todo.session)]]
+        for i, (_, s) in enumerate(todo.iterrows()):
+            self.progress(i, len(todo), f"{season} R{s['round']:02d} {s.session}")
             try:
                 ok = load_session(self.db, season, int(s["round"]), s.session)
                 log.info("%s R%02d %-3s -> %s", season, s["round"], s.session, "gerai" if ok else "duomenų dar nėra")

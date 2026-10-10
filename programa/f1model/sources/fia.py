@@ -188,8 +188,10 @@ class UpgradeSource(_FiaSource):
         if season < FIRST_SEASON:
             return
         done = self._done("car_presentation")
-        for _, ev in self._events(season).iterrows():
+        events = self._events(season)
+        for i, (_, ev) in enumerate(events.iterrows()):
             rnd = int(ev["round"])
+            self.progress(i, len(events), ev["name"])
             if (season, rnd) in done:
                 continue
             url = next((u for u in self.docs.pdfs(season, ev["name"]) if "car_presentation" in doc_key(u)), None)
@@ -217,7 +219,9 @@ class GridSource(_FiaSource):
             "WHERE s.season=? AND s.session IN ('R', 'S') AND s.status != 'ok' AND s.date_utc <= ?",
             (season, (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()))
         numbers = self._driver_numbers(season)
-        for (rnd, name), group in pending.groupby(["round", "name"]):
+        groups = pending.groupby(["round", "name"])
+        for i, ((rnd, name), group) in enumerate(groups):
+            self.progress(i, groups.ngroups, name)
             pdfs = self.docs.pdfs(season, name)
             for session in group.session:
                 url = next((u for kind in self.DOC_FOR[session] for u in pdfs if kind in doc_key(u)), None)
