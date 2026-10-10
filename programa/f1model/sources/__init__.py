@@ -6,6 +6,7 @@ NAUJAS ŠALTINIS = nauja klasė + įrašas `registry()`.
 import logging
 import time
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 import requests
 
@@ -17,15 +18,36 @@ class DataSource(ABC):
 
     def __init__(self, db, ref):
         self.db, self.ref = db, ref
-        self.report = lambda frac, detail="": None   # update_all() pakeičia į eigos juostos atnaujinimą
+        self.report = lambda i, n, detail: None   # update_all() pakeičia į eigos juostos atnaujinimą
 
     @abstractmethod
     def update(self, season: int) -> None:
         """Surenka trūkstamus/naujausius sezono duomenis į DB."""
 
     def progress(self, i, n, detail=""):
-        """Kviečiama cikluose: atlikta i iš n (eigos juostai sąsajoje)."""
-        self.report(min(1.0, i / n) if n else 1.0, detail)
+        """Kviečiama cikluose: dabar apdorojamas i-asis (nuo 0) iš n elementų (eigos juostai sąsajoje)."""
+        self.report(i, n, detail)
+
+
+@dataclass
+class Progress:
+    """Atnaujinimo eigos įvykis sąsajai."""
+    index: int                  # kelintas šaltinis (nuo 0)
+    total: int                  # kiek šaltinių iš viso
+    source: DataSource
+    status: str                 # running / done / error
+    step: tuple = (0, 0)        # (i, n) – šaltinio viduje
+    detail: str = ""
+    error: Exception = None
+
+    @property
+    def source_frac(self):
+        i, n = self.step
+        return 1.0 if self.status != "running" else (min(1.0, i / n) if n else 0.0)
+
+    @property
+    def frac(self):
+        return (self.index + self.source_frac) / self.total if self.total else 1.0
 
 
 def get_json(url, params=None, tries=6, **kw):
@@ -54,19 +76,19 @@ def registry(db, ref):
 
 def update_all(sources, season, only=None, progress=None):
     """Atnaujina šaltinius; vieno klaida nestabdo kitų. Grąžina [(šaltinis, klaida)].
-    progress(dalis 0..1, šaltinis, detalė) – eigos juostai (nebūtina)."""
+    progress(Progress) – eigos juostai (nebūtina)."""
     errors = []
     chosen = [s for s in sources if not only or s.label in only]
+    emit = progress or (lambda ev: None)
     for k, src in enumerate(chosen):
-        if progress:
-            src.report = lambda frac, detail="", k=k, src=src: progress((k + frac) / len(chosen), src, detail)
-            src.report(0.0)
+        src.report = lambda i, n, detail, k=k, src=src: emit(Progress(k, len(chosen), src, "running", (i, n), detail))
+        emit(Progress(k, len(chosen), src, "running"))
         try:
             log.info("Atnaujinu: %s", src.label)
             src.update(season)
+            emit(Progress(k, len(chosen), src, "done"))
         except Exception as e:  # tinklo/API klaidos – tęsiame su kitais šaltiniais
             log.warning("%s: nepavyko (%s)", src.label, e)
             errors.append((src.label, e))
-    if progress and chosen:
-        progress(1.0, chosen[-1], "")
+            emit(Progress(k, len(chosen), src, "error", error=e))
     return errors

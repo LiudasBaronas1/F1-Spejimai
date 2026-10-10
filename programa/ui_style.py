@@ -165,6 +165,90 @@ table.f1-heat td {{ text-align: center; min-width: 2rem; padding: .3rem .2rem; b
 table.f1-heat td.team {{ text-align: left; white-space: nowrap; padding-right: .8rem; border-left: 4px solid var(--team);
     font-weight: 700; font-style: italic; text-transform: uppercase; }}
 
+/* iššokantys langai: patarimai, išskleidžiami sąrašai, pranešimai */
+[data-testid="stTooltipContent"] {{ background: #262630 !important; color: #fff !important; border: 1px solid {LINE};
+    border-left: 3px solid {RED}; border-radius: 6px; padding: .55rem .85rem !important; max-width: 300px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .55); }}
+[data-testid="stTooltipContent"] p {{ font-size: .86rem; line-height: 1.45; margin: 0; white-space: normal; }}
+[data-testid="stToast"] {{ background: #262630 !important; border: 1px solid {LINE}; border-left: 4px solid {RED};
+    border-radius: 6px; box-shadow: 0 10px 28px rgba(0, 0, 0, .55); }}
+[data-testid="stToast"] p {{ color: #fff; font-weight: 600; }}
+[data-testid="stAlert"] {{ border-radius: 6px; }}
+
+/* šoninė juosta */
+.f1-side-brand {{ font-size: 1.25rem; font-weight: 900; font-style: italic; text-transform: uppercase;
+    padding-right: .2em; margin: -.6rem 0 .2rem; }}
+.f1-side-brand span {{ color: {RED}; }}
+.f1-side-info {{ background: {CARD}; border-left: 3px solid {LINE}; border-radius: 0 8px 0 0; padding: .55rem .8rem;
+    margin: .6rem 0; font-size: .86rem; color: {MUTED}; line-height: 1.45; }}
+.f1-side-info b {{ display: block; color: #fff; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; }}
+
+/* pasirinkimo juosta virš skyrių */
+.st-key-context {{ background: {CARD}; border-radius: 0 14px 0 0; border-top: 3px solid {RED};
+    padding: .7rem 1rem .9rem; margin-bottom: .6rem; }}
+/* vidiniai skirtukai (Modelis ir duomenys) – mažesni */
+.st-key-model_area button[data-baseweb="tab"] p {{ font-size: .9rem; color: {MUTED}; }}
+.st-key-model_area button[data-baseweb="tab"][aria-selected="true"] p {{ color: #fff; }}
+
+/* eigos skydelis */
+.f1-prog {{ background: {CARD}; border-radius: 0 18px 0 0; border-top: 4px solid {RED}; padding: 1.3rem 1.5rem 1.2rem;
+    margin: .4rem 0 1.4rem; box-shadow: 0 12px 34px rgba(0, 0, 0, .35); }}
+.f1-prog .top {{ display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }}
+.f1-prog .ttl {{ font-size: 1.6rem; font-weight: 900; font-style: italic; text-transform: uppercase; line-height: 1.1;
+    padding-right: .2em; }}
+.f1-prog .sub {{ color: {MUTED}; font-size: .95rem; margin-top: .25rem; }}
+.f1-prog .pct {{ font-size: 3.2rem; font-weight: 900; font-style: italic; line-height: 1; padding-right: .1em; }}
+.f1-prog .bar {{ background: #2C2C36; border-radius: 3px; overflow: hidden; margin: .8rem 0 1rem;
+    transform: skewX(-12deg); }}
+.f1-prog .bar i {{ display: block; height: 100%; background: linear-gradient(90deg, #B00500, {RED} 60%, #FF3B2F);
+    transition: width .3s ease; }}
+.f1-prog .bar.big {{ height: 22px; }}
+.f1-prog .bar.small {{ height: 9px; margin: .55rem 0 0; }}
+.f1-prog .now {{ background: #191920; border: 1px solid {LINE}; border-left: 4px solid {RED}; border-radius: 0 10px 0 0;
+    padding: .8rem 1rem; }}
+.f1-prog .now .k {{ color: {RED}; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }}
+.f1-prog .now .name {{ font-size: 1.25rem; font-weight: 900; font-style: italic; text-transform: uppercase;
+    padding-right: .2em; }}
+.f1-prog .now .desc {{ color: {MUTED}; font-size: .92rem; line-height: 1.45; }}
+.f1-prog .now .detail {{ display: flex; justify-content: space-between; gap: 1rem; margin-top: .45rem; font-weight: 700;
+    font-size: .95rem; }}
+.f1-prog .now .detail span {{ color: {MUTED}; font-weight: 600; white-space: nowrap; }}
+.f1-prog .steps {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .35rem .9rem;
+    margin-top: 1rem; }}
+.f1-prog .st {{ display: flex; align-items: center; gap: .6rem; padding: .35rem 0; border-bottom: 1px solid #26262F;
+    font-size: .92rem; }}
+.f1-prog .st .dot {{ width: 11px; height: 11px; flex: none; transform: skewX(-20deg); background: #3A3A44; }}
+.f1-prog .st .n {{ flex: 1; color: {MUTED}; }}
+.f1-prog .st .s {{ color: {MUTED}; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+    white-space: nowrap; }}
+.f1-prog .st.run .dot {{ background: {RED}; animation: f1pulse 1s ease-in-out infinite; }}
+.f1-prog .st.run .n, .f1-prog .st.done .n {{ color: #fff; font-weight: 600; }}
+.f1-prog .st.run .s {{ color: {RED}; }}
+.f1-prog .st.done .dot {{ background: #E8E8EE; }}
+.f1-prog .st.err .dot {{ background: #F5A524; }}
+.f1-prog .st.err .s, .f1-prog .st.err .n {{ color: #F5A524; }}
+@keyframes f1pulse {{ 50% {{ opacity: .35; }} }}
+
+/* trasos skyrius */
+.f1-profile {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .7rem; }}
+.f1-profile div {{ background: {CARD}; border-radius: 0 10px 0 0; padding: .6rem .8rem; }}
+.f1-profile .k {{ color: {MUTED}; font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }}
+.f1-profile .v {{ font-size: 1.35rem; font-weight: 900; font-style: italic; }}
+.f1-profile .d {{ color: {MUTED}; font-size: .8rem; line-height: 1.35; margin-top: .15rem; }}
+table.f1-plain th, table.f1-plain td, table.f1-table th, table.f1-table td {{ border-left: none; border-right: none;
+    border-top: none; }}
+table.f1-plain, table.f1-table {{ border: none; }}
+div[data-baseweb="tab-list"] {{ gap: 1.4rem; }}
+table.f1-plain {{ width: 100%; border-collapse: collapse; font-size: .95rem; }}
+table.f1-plain th {{ text-align: left; color: {MUTED}; text-transform: uppercase; font-size: .74rem; font-weight: 700;
+    padding: .45rem .5rem; border-bottom: 1px solid {LINE}; white-space: nowrap; }}
+table.f1-plain td {{ padding: .5rem .5rem; border-bottom: 1px solid #26262F; }}
+table.f1-plain tr:hover td {{ background: #24242E; }}
+table.f1-plain td.b {{ font-weight: 900; font-style: italic; }}
+table.f1-plain td.m {{ color: {MUTED}; }}
+table.f1-plain td .drv {{ border-left: 4px solid var(--team); padding-left: .45rem; font-weight: 900; font-style: italic; }}
+table.f1-plain tr.hot td {{ background: rgba(225, 6, 0, .1); }}
+
 /* rezultatų lentelė */
 table.f1-table {{ width: 100%; border-collapse: collapse; font-size: 1rem; }}
 table.f1-table th {{ text-align: left; color: {MUTED}; text-transform: uppercase; font-size: .78rem;
@@ -213,7 +297,8 @@ def section(title, subtitle=None):
 
 
 def note(title, text, color=RED):
-    _md(f'<div class="f1-note" style="--c:{color}"><b>{html.escape(title)}</b>{html.escape(text)}</div>')
+    head = f"<b>{html.escape(title)}</b>" if title else ""
+    _md(f'<div class="f1-note" style="--c:{color}">{head}{html.escape(text)}</div>')
 
 
 def tiles(items):
@@ -382,6 +467,57 @@ def track_card(name, subtitle, outline, facts, no_map_text):
                    f'{_scale_bar(s) if s is not None else ""}</div></div>' for k, v, s in facts)
     _md(f'<div class="f1-track"><div class="tname">{html.escape(name)}</div><div class="tsub">{html.escape(subtitle)}</div>'
         f'{svg}<div class="f1-facts">{rows}</div></div>')
+
+
+def progress_html(title, frac, subtitle, steps, now=None, now_label=""):
+    """Didelis eigos skydelis. steps – [(pavadinimas, būsena run/done/err/wait, būsenos tekstas)];
+    now – dict(name, desc, detail, step, frac) apie tai, kas daroma dabar (arba None)."""
+    e = html.escape
+    pct = max(0.0, min(frac, 1.0))
+    current = ""
+    if now:
+        current = (f'<div class="now"><div class="k">{e(now_label)}</div><div class="name">{e(now["name"])}</div>'
+                   f'<div class="desc">{e(now.get("desc", ""))}</div>'
+                   f'<div class="detail">{e(now.get("detail", ""))}<span>{e(now.get("step", ""))}</span></div>'
+                   f'<div class="bar small"><i style="width:{max(0.0, min(now.get("frac", 0), 1.0)) * 100:.1f}%"></i>'
+                   f'</div></div>')
+    rows = "".join(f'<div class="st {s}"><span class="dot"></span><span class="n">{e(n)}</span>'
+                   f'<span class="s">{e(txt)}</span></div>' for n, s, txt in steps)
+    return (f'<div class="f1-prog"><div class="top"><div><div class="ttl">{e(title)}</div>'
+            f'<div class="sub">{e(subtitle)}</div></div><div class="pct">{pct:.0%}</div></div>'
+            f'<div class="bar big"><i style="width:{pct * 100:.1f}%"></i></div>{current}'
+            f'<div class="steps">{rows}</div></div>')
+
+
+def side_brand(accent):
+    _md(f'<div class="f1-side-brand">F1 <span>{html.escape(accent)}</span></div>')
+
+
+def side_info(title, text):
+    _md(f'<div class="f1-side-info"><b>{html.escape(title)}</b>{html.escape(text)}</div>')
+
+
+def profile_grid(items):
+    """items – [(pavadinimas, reikšmė tekstu, skalė 1–5 arba None, paaiškinimas)]."""
+    cells = "".join(f'<div><div class="k">{html.escape(k)}</div><div class="v">{html.escape(v)}'
+                    f'{_scale_bar(s) if s is not None else ""}</div><div class="d">{html.escape(d)}</div></div>'
+                    for k, v, s, d in items)
+    _md(f'<div class="f1-profile">{cells}</div>')
+
+
+def plain_table(headers, rows, classes=None, row_classes=None):
+    """headers – stulpelių pavadinimai; rows – eilutės (reikšmės jau HTML saugios arba paprastas tekstas);
+    classes – stulpelio CSS klasė (b – paryškinta, m – blanki); row_classes – eilutės klasė (pvz. hot)."""
+    classes = classes or [""] * len(headers)
+    row_classes = row_classes or [""] * len(rows)
+    head = "".join(f"<th>{html.escape(h)}</th>" for h in headers)
+    body = "".join(f'<tr class="{rc}">' + "".join(f'<td class="{c}">{v}</td>' for v, c in zip(r, classes)) + "</tr>"
+                   for r, rc in zip(rows, row_classes))
+    _md(f'<table class="f1-plain"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>')
+
+
+def driver_cell(code, team, color_of):
+    return f'<span class="drv" style="--team:{color_of(team)}">{html.escape(code)}</span>' if code else "–"
 
 
 def load_outline(db, circuit):

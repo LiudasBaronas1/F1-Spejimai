@@ -43,7 +43,7 @@ def training_samples(kind, data, upto=None, progress=None):
     samples = []
     for i, (_, s) in enumerate(done.iterrows()):
         if progress:
-            progress(i / len(done))
+            progress(i / len(done), f"{i + 1}/{len(done)} · {s.season} R{s['round']:02d} {s.session}")
         top = data.top3(s.season, s["round"], s.session)
         X = features.build(data, s.season, s["round"], s.session, before=s.date_utc)
         idx = [X.index.get_loc(d) for d in top if d in X.index]
@@ -55,10 +55,12 @@ def training_samples(kind, data, upto=None, progress=None):
 
 def fit_weights(kind, data, upto=None, progress=None):
     """Svoriai, išmokti iš sesijų iki `upto`. Grąžina (svoriai, imčių skaičius).
-    progress(dalis 0..1) – eigos juostai (nebūtina)."""
+    progress(dalis 0..1, detalė) – eigos juostai (nebūtina)."""
     names = features.names()
     default = {f: features.REGISTRY[f].default_weight for f in names}
     samples = training_samples(kind, data, upto, progress)
+    if progress:
+        progress(1.0, "")   # požymiai paruošti, toliau – svorių optimizavimas
     if len(samples) < 6:
         return default, len(samples)
     n = sum(sw for _, _, sw in samples)
@@ -72,8 +74,9 @@ def fit_weights(kind, data, upto=None, progress=None):
 
 
 def fit_all(data, progress=None):
-    part = lambda i: (lambda f: progress((i + f) / len(KINDS)))
-    return {k: fit_weights(k, data, progress=part(i) if progress else None) for i, k in enumerate(KINDS)}
+    """progress(dalis 0..1, modelis 'quali'/'race', dalis to modelio viduje, detalė)."""
+    part = lambda i, k: (lambda f, detail="": progress((i + f) / len(KINDS), k, f, detail))
+    return {k: fit_weights(k, data, progress=part(i, k) if progress else None) for i, k in enumerate(KINDS)}
 
 
 def effective_weights(w, S):

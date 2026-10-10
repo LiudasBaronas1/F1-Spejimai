@@ -89,11 +89,13 @@ Baudos, skirtos jau po finišo, neįskaičiuojamos – taip, kaip numato mūsų 
       Pirmą kartą programa pati įdiegs, ko reikia (Python, jei jo nėra, ir bibliotekas; 2–5 min., reikia interneto)
       ir sukurs darbalaukio nuorodą <b>„F1 Spejimai“</b> – vėliau paleiskite per ją. Atsidarys atskiras langas.</li>
   <li><b>Atnaujinkite duomenis.</b> Kairėje paspauskite <b>„Atnaujinti duomenis“</b>. Programa parsisiųs naujausius
-      rezultatus, treniruočių laikus, orų prognozę ir lažybų rinkų kainas (apie 1 minutę). Eigos juosta rodo, kiek
-      procentų atlikta, kurį šaltinį programa tuo metu siunčiasi ir kurį etapą ar sesiją. Po atnaujinimo modelis
-      persimoko – tai irgi rodoma eigos juosta.</li>
-  <li><b>Pasirinkite sesiją.</b> Viršuje – <b>Metai</b>, <b>Grand Prix</b> ir <b>Etapas</b>. Atidarius programą automatiškai
-      parenkama artimiausia sesija.</li>
+      rezultatus, treniruočių laikus, orų prognozę ir lažybų rinkų kainas (apie 1–2 minutes). Didelis eigos skydelis
+      rodo, kiek procentų atlikta, kiek liko laukti, kurį šaltinį programa tuo metu siunčiasi, ką būtent (etapą, sesiją,
+      rinką – pvz. „13 iš 23“) ir kiekvieno šaltinio būseną: laukia, vyksta, atlikta (su trukme) ar klaida. Po atnaujinimo
+      modelis persimoko – tai rodo toks pat skydelis (kuris modelis, kelinta sesija).</li>
+  <li><b>Pasirinkite sesiją.</b> Viršuje esančioje juostoje – <b>Metai</b>, <b>Grand Prix</b> ir <b>Sesija</b>. Pasirinkimas
+      galioja visiems skyriams (Spėjimas, Trasa, Modelio paaiškinimas). Atidarius programą automatiškai parenkama
+      artimiausia sesija.</li>
   <li><b>Perskaitykite siūlomą spėjimą.</b> Trys kortelės (1, 2, 3 vieta) – tai siūlomas trejetas. Prie kiekvieno
       vairuotojo nurodyta, kokia tikimybė, kad jis bus tiksliai toje vietoje ir kad pateks į TOP3.</li>
   <li><b>Spėkite kuo vėliau.</b> Taisyklės leidžia keisti spėjimą iki sesijos pradžios. Geriausia atnaujinti duomenis
@@ -108,56 +110,76 @@ atsidarys akimirksniu.</p>
 
 <section>
 <h2>3. Programos langas</h2>
-<h3>Skirtukas „Spėjimas“</h3>
+<p>Programa turi penkis skyrius: <b>Spėjimas</b>, <b>Trasa</b>, <b>Atnaujinimai</b>, <b>Naujienos</b> ir
+<b>Modelis ir duomenys</b>. Kairėje juostoje – kalba, mygtukas „Atnaujinti duomenis“, paskutinio atnaujinimo laikas ir
+artimiausia sesija (po kiek laiko ji prasidės).</p>
+<img class="shot" src="img/eiga.jpg">
+<p class="cap">Eigos skydelis: bendra pažanga, kas daroma dabar ir kiekvieno žingsnio būsena.</p>
+<h3>Skyrius „Spėjimas“</h3>
 <img class="shot" src="img/spejimas.jpg">
-<p class="cap">Spėjimo skirtukas: pasirinkimas, siūlomas trejetas, rodikliai ir trasos kortelė su žemėlapiu.</p>
+<p class="cap">Sesijos pasirinkimas, siūlomas trejetas ir svarbiausi rodikliai.</p>
 <table>
   <tr><th style="width:32%">Dalis</th><th>Ką rodo</th></tr>
   <tr><td>Siūlomas spėjimas</td><td>Trejetas su daugiausiai tikėtinų taškų. Spalvota juosta – komandos spalva.</td></tr>
   <tr><td>Tikėtini taškai</td><td>Kiek taškų vidutiniškai atneštų šis spėjimas (iš 6). Įprastai 2–3.</td></tr>
   <tr><td>Lietaus tikimybė</td><td>Ar lis sesijos metu. Įvykusioms sesijoms – faktas iš trasos jutiklių.</td></tr>
-  <tr><td>Trasos kortelė</td><td>Trasos žemėlapis (raudona žymė – starto/finišo linija, skaičiai – posūkiai), padangų
-      apkrova, lenkimo sunkumas (1–5) ir panašiausios trasos.</td></tr>
+  <tr><td>Lenkimo sunkumas</td><td>Kuo didesnis (1–5), tuo svarbesnė starto vieta.</td></tr>
   <tr><td>Tikimybės</td><td>Kiekvieno vairuotojo tikimybė būti P1, P2, P3 ir TOP3.</td></tr>
-  <tr><td>Kodėl?</td><td>Iš ko susideda vairuotojo „stiprumas“ – kiek prideda forma, starto vieta, lažybų rinka ir t. t.
-      Vairuotojai surikiuoti kaip tikimybių lentelėje.</td></tr>
   <tr><td>Išsaugoti spėjimą</td><td>Mygtukas šalia etapo pavadinimo: įrašo spėjimą į duomenų bazę.</td></tr>
-  <tr><td>Svarbu šiam etapui</td><td>Po trasos kortele: FIA starto baudos (kas startuoja toliau nei kvalifikavosi),
-      kurios komandos atvežė naujų detalių ir svarbios naujienos (baudos, variklis, vairuotojai, orai) apie pirmaujančias
-      komandas.</td></tr>
+  <tr><td>Svarbu šiam etapui</td><td>FIA starto baudos (kas startuoja toliau nei kvalifikavosi), kurios komandos atvežė
+      naujų detalių ir svarbios naujienos (baudos, variklis, vairuotojai, orai) apie pirmaujančias komandas.</td></tr>
 </table>
 <div class="box"><b class="t">Kalba</b>Kairėje juostoje viršuje – kalbos pasirinkimas (lietuvių / English). Pasirinkimas
-įsimenamas. Visi tekstai laikomi duomenų bazėje, juos galima taisyti skirtuke „Duomenys“ → „Vertimai“.</div>
+įsimenamas. Visi tekstai laikomi duomenų bazėje, juos galima taisyti skyriuje „Modelis ir duomenys“ → „Duomenys“ →
+„Vertimai“.</div>
 <p>Pasirinkus jau įvykusią sesiją, modelis spėja <b>tik su tais duomenimis, kurie buvo žinomi prieš ją</b>, ir parodo
 tikrą rezultatą bei kiek taškų spėjimas būtų pelnęs. Taip galima patikrinti modelį bet kuriame etape nuo 2023 m.</p>
+</section>
 
-<h3>Kiti skirtukai</h3>
+<section>
+<h3 style="margin-top:0">Skyrius „Trasa“</h3>
+<img class="shot" src="img/trasa.jpg">
+<p class="cap">Trasos žemėlapis, charakteristikos ir strategija.</p>
 <table>
-  <tr><th style="width:22%">Skirtukas</th><th>Kam skirtas</th></tr>
+  <tr><th style="width:32%">Dalis</th><th>Ką rodo</th></tr>
+  <tr><td>Trasos kortelė</td><td>Žemėlapis (raudona žymė – starto/finišo linija, skaičiai – posūkiai), padangų apkrova,
+      lenkimo sunkumas, panašiausios trasos (su panašumu procentais) ir savaitgalio formatas.</td></tr>
+  <tr><td>Trasos charakteristika</td><td>Greitis, prispaudimas, padangų apkrova, lenkimo sunkumas (1–5) ir ar tai gatvių
+      trasa – su paaiškinimu, ką tai reiškia.</td></tr>
+  <tr><td>Strategija</td><td>Kiek sustojimų tikėtina, ar svarbi starto vieta, ar didelė saugos automobilio tikimybė.</td></tr>
+  <tr><td>Tvarkaraštis ir orai</td><td>Visos savaitgalio sesijos jūsų laiku: būsena, lietaus tikimybė, temperatūra,
+      orų šaltinis (prognozė ar trasos jutikliai) ir įvykusių sesijų TOP3. Pasirinkta sesija paryškinta.</td></tr>
+  <tr><td>Ankstesni metai</td><td>Šios trasos lenktynių podiumai ir pole pozicijos nuo 2023 m.</td></tr>
+  <tr><td>Vairuotojai šioje trasoje</td><td>Šio savaitgalio vairuotojų startai, vidutinė ir geriausia vieta, podiumai,
+      pergalės ir vidutinė kvalifikacijos vieta šioje trasoje.</td></tr>
+</table>
+
+<h3>Kiti skyriai</h3>
+<table>
+  <tr><th style="width:22%">Skyrius</th><th>Kam skirtas</th></tr>
   <tr><td>Atnaujinimai</td><td>Kiekvienos komandos naujos bolido detalės kiekvienam etapui iš oficialių FIA dokumentų
       („Car Presentation Submissions“, 2024+): detalė, paskirtis (našumas / trasai / patikimumas) ir aprašymas, bei
       sezono apžvalga – kas ir kada atvežė daugiausiai naujovių. Kiekvienoje kortelėje – nuoroda į originalų FIA
       dokumentą (atsidaro ties tos komandos puslapiu) ir straipsniai apie tos komandos atnaujinimus.</td></tr>
   <tr><td>Naujienos</td><td>Naujienos iš formula1.com, Autosport, Motorsport.com, RaceFans ir BBC, automatiškai pažymėtos
       komandomis ir temomis (atnaujinimai, baudos, variklis, vairuotojai, orai, taisyklės, padangos). Filtrai ir paieška.</td></tr>
-  <tr><td>Požymiai</td><td>Visi veiksniai, į kuriuos atsižvelgia modelis, jų išmokti svoriai ir slankikliai, kuriais galite
-      sustiprinti ar susilpninti veiksnio įtaką (1 = kaip išmokta, 0 = neatsižvelgti).</td></tr>
-  <tr><td>Sezono testas</td><td>Atkuria visą sezoną: kiek taškų modelis būtų surinkęs kiekvienoje sesijoje.</td></tr>
-  <tr><td>SQL</td><td>Duomenų bazės peržiūra: pavyzdinės užklausos, visos lentelės. Tik skaitymui – nieko sugadinti negalima.</td></tr>
-  <tr><td>Parametrai</td><td>Visų nustatymų ir svorių suvestinė (tas pats, kas faile PARAMETRAI.md).</td></tr>
-  <tr><td>Duomenys</td><td>Žinynai: trasų charakteristikos, komandų spalvos, žaidėjai, sąsajos vertimai ir kalbos.
-      Juos galima redaguoti.</td></tr>
+  <tr><td>Modelis ir duomenys</td><td>Viskas apie modelį, vidiniuose skirtukuose:
+      <b>Spėjimo paaiškinimas</b> – iš ko susideda kiekvieno vairuotojo „stiprumas“ (forma, starto vieta, lažybų rinka ir
+      t. t.) ir visų požymių reikšmės pasirinktai sesijai; <b>Požymiai</b> – išmokti svoriai ir slankikliai
+      (1 = kaip išmokta, 0 = neatsižvelgti); <b>Sezono testas</b> – kiek taškų modelis būtų surinkęs kiekvienoje sesijoje;
+      <b>Parametrai</b> – nustatymų ir svorių suvestinė (PARAMETRAI.md); <b>SQL</b> – duomenų bazės peržiūra (tik
+      skaitymui); <b>Duomenys</b> – redaguojami žinynai (trasos, komandų spalvos, vertimai ir kt.).</td></tr>
 </table>
 </section>
 
 <section>
-<h3 style="margin-top:0">Skirtukas „Požymiai“</h3>
+<h3 style="margin-top:0">Modelis ir duomenys → „Požymiai“</h3>
 <img class="shot" src="img/pozymiai.jpg">
 <p class="cap">Kiekvienas veiksnys su paaiškinimu, išmoktu svoriu kvalifikacijai ir lenktynėms bei daugikliu.</p>
-<h3>Skirtukas „Atnaujinimai“</h3>
+<h3>Skyrius „Atnaujinimai“</h3>
 <img class="shot" src="img/atnaujinimai.jpg">
 <p class="cap">Komandų naujos bolido detalės pasirinktam etapui iš oficialių FIA dokumentų.</p>
-<h3>Skirtukas „Duomenys“</h3>
+<h3>Modelis ir duomenys → „Duomenys“</h3>
 <img class="shot" src="img/duomenys.jpg">
 <p class="cap">Žinynų redagavimas. Pakeitus, pavyzdžiui, trasos lenkimo sunkumą, modelis persimoko automatiškai.</p>
 </section>
@@ -263,9 +285,9 @@ Išjungti: <code>automatinis_isjungti.bat</code>. Veikia tik kai kompiuteris įj
       duomenys bus parsiųsti automatiškai.</td></tr>
   <tr><td>Pirmas paleidimas nepavyko</td><td>Paleiskite <code>programa\idiegti.bat</code> ir perskaitykite pranešimą. Dažniausiai
       trūksta Python – atsisiųskite jį iš python.org (pažymėkite „Add python.exe to PATH“).</td></tr>
-  <tr><td>Noriu, kad modelis mažiau žiūrėtų į kažką</td><td>Skirtuke „Požymiai“ sumažinkite daugiklį ir paspauskite
+  <tr><td>Noriu, kad modelis mažiau žiūrėtų į kažką</td><td>Skyriuje „Modelis ir duomenys“ → „Požymiai“ sumažinkite daugiklį ir paspauskite
       „Išsaugoti“.</td></tr>
-  <tr><td>Nesutinku su trasos įvertinimu</td><td>Skirtuke „Duomenys“ pasirinkite žinyną „Trasos“, pakeiskite reikšmę ir
+  <tr><td>Nesutinku su trasos įvertinimu</td><td>Skyriuje „Modelis ir duomenys“ → „Duomenys“ pasirinkite žinyną „Trasos“, pakeiskite reikšmę ir
       išsaugokite.</td></tr>
   <tr><td>Kodėl modelis siūlo ne favoritą?</td><td>Trejetas parenkamas pagal tikėtinus taškus. Žr. „Kodėl?“ grafiką
       ir tikimybių lentelę.</td></tr>

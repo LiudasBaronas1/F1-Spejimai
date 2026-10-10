@@ -227,12 +227,12 @@ class OfficialSource(DataSource):
             return update_history(self.db, season)
         save_schedule(self.db, season)
         now = datetime.now(timezone.utc)
-        todo = self.db.query("SELECT round, session, date_utc FROM sessions WHERE season=? AND status!='ok' "
-                        "ORDER BY date_utc", (season,))
+        todo = self.db.query("SELECT s.round, s.session, s.date_utc, e.name FROM sessions s JOIN events e "
+                             "USING(season, round) WHERE s.season=? AND s.status!='ok' ORDER BY s.date_utc", (season,))
         todo = todo[[datetime.fromisoformat(d) + timedelta(minutes=READY_AFTER_MIN[c]) <= now
                      for d, c in zip(todo.date_utc, todo.session)]]
         for i, (_, s) in enumerate(todo.iterrows()):
-            self.progress(i, len(todo), f"{season} R{s['round']:02d} {s.session}")
+            self.progress(i, len(todo), f"{season} R{s['round']:02d} {s['name']} · {s.session}")
             try:
                 ok = load_session(self.db, season, int(s["round"]), s.session)
                 log.info("%s R%02d %-3s -> %s", season, s["round"], s.session, "gerai" if ok else "duomenų dar nėra")

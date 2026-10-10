@@ -13,6 +13,7 @@ from .excel import ExcelPicks
 from .i18n import DEFAULT_LANGUAGE, TranslationRepository, Translator
 from .preferences import Preferences
 from .reference import Reference
+from .track_info import TrackInfo
 
 
 def install_starter_data(starter_dir, db_path):
@@ -63,6 +64,9 @@ class App:
 
     def briefing(self):
         return Briefing(self.db, self.reference())
+
+    def track_info(self, data):
+        return TrackInfo(data, self.db.query("SELECT * FROM trasos"))
 
     def preferences(self):
         return Preferences(self.db)

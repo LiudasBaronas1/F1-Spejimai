@@ -89,7 +89,7 @@ class OddsSource(DataSource):
         now = datetime.now(timezone.utc)
         events = list(self.events(season, skip=set(stored.event_slug)))
         for i, ev in enumerate(events):
-            self.progress(i, len(events), f"{ev.session} {ev.market} {ev.date:%m-%d}")
+            self.progress(i, len(events), f"{ev.date:%Y-%m-%d} · {ev.session} {ev.market}")
             cand = sess[(sess.session == ev.session) & ((sess.d.dt.normalize() - ev.date.normalize()).abs()
                                                         <= pd.Timedelta(days=1))]
             if cand.empty:
@@ -144,7 +144,8 @@ class KalshiSource(OddsSource):
     MAX_SPREAD = 0.20           # didesnis pirkimo/pardavimo skirtumas -> imama paskutinio sandorio kaina
 
     def events(self, season, skip):
-        for series, (session, market) in self.SERIES.items():
+        for k, (series, (session, market)) in enumerate(self.SERIES.items()):
+            self.progress(0, 0, f"{series} ({k + 1}/{len(self.SERIES)})")
             cursor = None
             while True:
                 r = get_json(f"{self.API}/events", dict(series_ticker=series, limit=200, with_nested_markets="true",
@@ -212,6 +213,7 @@ class PolymarketSource(OddsSource):
         for closed in ("true", "false"):
             offset = 0
             while page := get_json(self.GAMMA, dict(tag_slug="f1", closed=closed, limit=100, offset=offset)):
+                self.progress(0, 0, f"{'closed' if closed == 'true' else 'open'} {offset + len(page)}")
                 for ev in page:
                     kind = next(((s, m) for frag, s, m in self.TYPES if frag in ev["slug"]), None)
                     if kind and "constructor" not in ev["slug"] and not (closed == "true" and ev["slug"] in skip):

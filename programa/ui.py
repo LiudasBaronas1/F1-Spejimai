@@ -1,7 +1,12 @@
 """F1 spėjimų programa (sąsaja). Paleidimas: darbalaukio nuoroda „F1 Spėjimai“ arba F1 Spėjimai.vbs.
-Visi sąsajos tekstai – per vertėją `t` (DB lentelė `vertimai`, žr. f1model/i18n.py)."""
+Visi sąsajos tekstai – per vertėją `t` (DB lentelė `vertimai`, žr. f1model/i18n.py).
+
+Skyriai: Spėjimas · Trasa · Atnaujinimai · Naujienos · Modelis ir duomenys (paaiškinimas, požymiai, testas,
+parametrai, SQL, žinynai). Etapas ir sesija pasirenkami vieną kartą – virš skyrių."""
+import html
 import os
 import threading
+import time
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
@@ -65,59 +70,120 @@ def get_app():
 @st.cache_resource
 def memo():
     """Apmokyti modeliai (išvaloma kartu su st.cache_resource.clear()). Ne @st.cache_resource funkcijos,
-    nes jų viduje negalima atnaujinti eigos juostos."""
+    nes jų viduje negalima atnaujinti eigos skydelio."""
     return {}
-
-
-def cached(key, text, compute):
-    """compute(progress) skaičiuojamas tik pirmą kartą; tuo metu rodoma eigos juosta."""
-    store = memo()
-    if key not in store:
-        bar = st.progress(0.0, text=text)
-        store[key] = compute(lambda f: bar.progress(min(f, 1.0), text=f"{text} {f:.0%}"))
-        bar.empty()
-    return store[key]
-
-
-def load(app, version):
-    def compute(progress):
-        try:
-            app.excel().sync_to_db(app.db, app.dataset().events, SEASON)
-        except Exception:  # pvz. Excel atidarytas – ne kritiška
-            pass
-        data = app.dataset()
-        fitted = model.fit_all(data, progress=progress)
-        model.save_weights(app.db, fitted)
-        return data, fitted
-    return cached(("model", version), t("spinner.training"), compute)
-
-
-def weights_before(version, kind, upto, data):
-    return cached(("before", version, kind, upto), t("spinner.training_before"),
-                  lambda progress: model.fit_weights(kind, data, upto=upto, progress=progress)[0])
-
-
-def update_data():
-    """Duomenų atnaujinimas su eigos juosta: bendra dalis, šaltinis ir ką jis dabar renka."""
-    bar = st.progress(0.0, text=t("sidebar.updating"))
-
-    def show(frac, src, detail):
-        name = t.get(f"source.{type(src).__name__}", src.label)
-        bar.progress(min(frac, 1.0), text=t("progress.update", pct=f"{frac:.0%}", source=name)
-                     + (f" · {detail}" if detail else ""))
-    errors = app.update(SEASON, progress=show)
-    bar.empty()
-    return errors
-
-
-def local(iso, fmt="%m-%d %H:%M"):
-    return datetime.fromisoformat(iso).astimezone().strftime(fmt)
 
 
 def version(app):
     """Keičiasi tik pasikeitus modelio duomenims arba Excel failui (ne kalbai ar išsaugotam spėjimui)."""
     return app.db.data_version(), app.excel_path.stat().st_mtime if app.excel_path.exists() else 0
 
+
+def local(iso, fmt="%m-%d %H:%M"):
+    return datetime.fromisoformat(iso).astimezone().strftime(fmt)
+
+
+def clock(seconds):
+    m, s = divmod(int(seconds), 60)
+    return f"{m // 60}:{m % 60:02d}:{s:02d}" if m >= 60 else f"{m}:{s:02d}"
+
+
+# ------------------------------------------------------------------ eigos skydelis
+
+class Panel:
+    """Didelis eigos skydelis vietoje `slot` (st.empty): bendra juosta, kas daroma dabar, žingsnių sąrašas."""
+
+    def __init__(self, slot, title):
+        self.slot, self.title, self.t0, self.shown = slot, title, time.monotonic(), 0.0
+
+    def timing(self, frac):
+        elapsed = time.monotonic() - self.t0
+        text = t("progress.elapsed", t=clock(elapsed))
+        if 0.04 < frac < 1:
+            text += " · " + t("progress.left", t=clock(elapsed / frac * (1 - frac)))
+        return text
+
+    def show(self, frac, subtitle, steps, now=None, force=False):
+        if not force and time.monotonic() - self.shown < 0.12:   # ne dažniau nei ~8 kartus per sekundę
+            return
+        self.shown = time.monotonic()
+        self.slot.markdown(ui.progress_html(self.title, frac, f"{subtitle} · {self.timing(frac)}", steps, now,
+                                            t("progress.now")), unsafe_allow_html=True)
+
+
+def cached(key, title, compute):
+    """compute(panel) skaičiuojamas tik pirmą kartą; tuo metu rodomas eigos skydelis."""
+    store = memo()
+    if key not in store:
+        slot = st.empty()
+        store[key] = compute(Panel(slot, title))
+        slot.empty()
+    return store[key]
+
+
+def training_progress(panel, kinds):
+    """Mokymosi eigos funkcija: progress(dalis, modelis, dalis modelio viduje, detalė)."""
+    names = {"quali": t("progress.model_quali"), "race": t("progress.model_race")}
+
+    def on(frac, kind, kind_frac, detail):
+        k = kinds.index(kind)
+        steps = [(names[x], *(("done", t("progress.finished")) if i < k else ("run", t("progress.running")) if i == k
+                              else ("wait", t("progress.waiting")))) for i, x in enumerate(kinds)]
+        now = dict(name=names[kind], desc=t("progress.training_desc"),
+                   detail=t("progress.session", d=detail) if detail else t("progress.fitting"), frac=kind_frac)
+        panel.show(frac, t("progress.training_sub", k=k + 1, n=len(kinds)), steps, now, force=not detail)
+    return on
+
+
+def load(app, version):
+    def compute(panel):
+        try:
+            app.excel().sync_to_db(app.db, app.dataset().events, SEASON)
+        except Exception:  # pvz. Excel atidarytas – ne kritiška
+            pass
+        data = app.dataset()
+        fitted = model.fit_all(data, progress=training_progress(panel, list(model.KINDS)))
+        model.save_weights(app.db, fitted)
+        return data, fitted
+    return cached(("model", version), t("progress.training_title"), compute)
+
+
+def weights_before(version, kind, upto, data):
+    def compute(panel):
+        on = training_progress(panel, [kind])
+        return model.fit_weights(kind, data, upto=upto, progress=lambda f, d="": on(f, kind, f, d))[0]
+    return cached(("before", version, kind, upto), t("progress.training_before_title"), compute)
+
+
+def update_data(slot):
+    """Duomenų atnaujinimas su eigos skydeliu: kiekvieno šaltinio būsena, trukmė ir ką jis dabar renka."""
+    sources = app.sources()
+    keys = [type(s).__name__ for s in sources]
+    names = [t.get(f"source.{k}", s.label) for k, s in zip(keys, sources)]
+    state, info, started = ["wait"] * len(sources), [t("progress.waiting")] * len(sources), {}
+    panel = Panel(slot, t("progress.update_title"))
+
+    def on(ev):
+        k = ev.index
+        started.setdefault(k, time.monotonic())
+        if ev.status == "running":
+            state[k], info[k] = "run", t("progress.running")
+        else:
+            secs = f"{time.monotonic() - started[k]:.0f}"
+            state[k], info[k] = ("done", t("progress.done", s=secs)) if ev.status == "done" else \
+                ("err", t("progress.failed", s=secs))
+        i, n = ev.step
+        now = dict(name=names[k], desc=t.get(f"source.{keys[k]}.desc", ""), detail=ev.detail or t("progress.starting"),
+                   step=t("progress.item", i=i + 1, n=n) if n else "", frac=ev.source_frac) \
+            if ev.status == "running" else None
+        panel.show(ev.frac, t("progress.update_sub", k=k + 1, n=ev.total), list(zip(names, state, info)), now,
+                   force=ev.status != "running" or not ev.detail)
+    errors = app.update(SEASON, progress=on)
+    app.preferences().set("atnaujinta", datetime.now(timezone.utc).isoformat())
+    return errors
+
+
+# ------------------------------------------------------------------ pagalbinės
 
 def news_rows(df, team_names, summary_len=None):
     """Naujienų DataFrame -> eilutės ui.news_list (komandų žymės – komandos spalva)."""
@@ -161,9 +227,20 @@ def weekend_panel(season, rnd, session, ev, leaders, teams):
         ui.news_list(news_rows(news, {k: v[0] for k, v in brief.teams(season).items()}, summary_len=160))
 
 
+def strategy_notes(location, street):
+    tc = ref.tracks
+    tyres, over = tc.tyre_severity(location), tc.overtaking(location)
+    notes = [t("strategy.tyres_high" if tyres >= 4 else "strategy.tyres_low" if tyres <= 2 else "strategy.tyres_mid"),
+             t("strategy.overtake_hard" if over >= 4 else "strategy.overtake_easy" if over <= 2
+               else "strategy.overtake_mid")]
+    return notes + ([t("strategy.street")] if street else [])
+
+
 def save_language():
     app.preferences().set("kalba", st.session_state["lang"])
 
+
+# ------------------------------------------------------------------ paleidimas
 
 app = get_app()
 languages = app.translations().languages()
@@ -177,26 +254,23 @@ LABEL = {f: t.get(f"feature.{f}.label", x.label) for f, x in features.REGISTRY.i
 st.set_page_config(page_title=t("app.title"), page_icon="ikona.ico", layout="wide")
 ui.apply()
 
-# ------------------------------------------------------------------ šoninė juosta
-
 with st.sidebar:
+    ui.side_brand(t("brand.accent"))
     st.selectbox(t("sidebar.language"), list(languages), format_func=languages.get, key="lang",
                  on_change=save_language)
     st.divider()
-    if st.button(t("sidebar.update"), width="stretch", type="primary", help=t("sidebar.update_help")):
-        errors = update_data()
-        app.reload_settings()
-        st.cache_resource.clear()
-        for k in [k for k in st.session_state if k.startswith("mult_")]:
-            del st.session_state[k]
-        for name, e in errors:
-            st.warning(f"{name}: {e}")
-        st.rerun()
-    st.caption(t("sidebar.multipliers_hint"))
-    st.divider()
-    if st.button(t("sidebar.quit"), width="stretch"):
-        st.warning(t("sidebar.quit_done"))
-        threading.Timer(1.0, os._exit, [0]).start()
+    update_clicked = st.button(t("sidebar.update"), width="stretch", type="primary")
+    st.caption(t("sidebar.update_info"))
+
+ui.header(t("brand.accent"), t("brand.subtitle", season=SEASON))
+progress_slot = st.empty()
+if update_clicked:
+    st.session_state["update_errors"] = [(name, str(e)) for name, e in update_data(progress_slot)]
+    app.reload_settings()
+    st.cache_resource.clear()
+    for k in [k for k in st.session_state if k.startswith("mult_")]:
+        del st.session_state[k]
+    st.rerun()
 
 data, fitted = load(app, version(app))
 S, ref = data.settings, data.ref
@@ -204,16 +278,30 @@ for f in features.names():  # slankiklių reikšmės pritaikomos prieš skaičiu
     if f"mult_{f}" in st.session_state:
         S.multipliers[f] = float(st.session_state[f"mult_{f}"])
 
-ui.header(t("brand.accent"), t("brand.subtitle", season=SEASON))
-TABS = ("predict", "upgrades", "news", "features", "backtest", "sql", "params", "data")
-tab = dict(zip(TABS, st.tabs([t(f"tab.{k}") for k in TABS])))
+with st.sidebar:
+    last = app.preferences().get("atnaujinta")
+    ui.side_info(t("sidebar.last_update"), local(last, "%Y-%m-%d %H:%M") if last else t("sidebar.never"))
+    now_utc = datetime.now(timezone.utc)
+    nr, ns = data.next_session((now_utc - timedelta(minutes=30)).isoformat())
+    if nr:
+        nrow = data.session_rows(SEASON, nr, ns).iloc[0]
+        left = datetime.fromisoformat(nrow.date_utc) - now_utc
+        hours = max(left.total_seconds(), 0) / 3600
+        ui.side_info(t("sidebar.next"), f"{data.event(SEASON, nr)['name']} · {SESSION[ns]} · "
+                     f"{local(nrow.date_utc)} ({t('sidebar.in', t=f'{hours:.0f} h' if hours >= 1 else f'{hours * 60:.0f} min')})")
+    for name, err in st.session_state.get("update_errors", []):
+        st.warning(f"{name}: {err}")
+    st.caption(t("sidebar.model_hint"))
+    st.divider()
+    if st.button(t("sidebar.quit"), width="stretch"):
+        st.warning(t("sidebar.quit_done"))
+        threading.Timer(1.0, os._exit, [0]).start()
 
-# ------------------------------------------------------------------ spėjimas
+# ------------------------------------------------------------------ etapo ir sesijos pasirinkimas (bendras)
 
-with tab["predict"]:
-    nr, ns = data.next_session((datetime.now(timezone.utc) - timedelta(minutes=30)).isoformat())
+with st.container(key="context"):
     seasons = sorted(data.events.season.unique(), reverse=True)
-    c0, c1, c2, c3 = st.columns([1, 3, 2, 1], vertical_alignment="bottom")
+    c0, c1, c2 = st.columns([1, 3, 2], vertical_alignment="bottom")
     season = c0.selectbox(t("predict.season"), seasons, index=seasons.index(SEASON) if SEASON in seasons else 0)
     evs = data.events[data.events.season == season].sort_values("round").set_index("round")
     rounds = list(evs.index)
@@ -229,24 +317,28 @@ with tab["predict"]:
                            index=codes.index(ns) if (season, rnd) == (SEASON, nr) and ns in codes else 0,
                            format_func=lambda c: f"{SESSION[c]} – {local(ev_sess.date_utc[c])}",
                            key=f"ses_{season}_{rnd}")
-    c3.button(t("predict.run"), type="primary", width="stretch")
 
-    srow, ev, kind = ev_sess.loc[session], evs.loc[rnd], kind_of(session)
-    done = srow.status == "ok"
+srow, ev, kind = ev_sess.loc[session], evs.loc[rnd], kind_of(session)
+done = srow.status == "ok"
+start = datetime.fromisoformat(srow.date_utc).astimezone()
+event_meta = [SESSION[session], f"{t(f'weekday.{start.weekday()}')} {start:%m-%d %H:%M}", ev.circuit,
+              t("predict.status_done" if done else "predict.status_upcoming")]
+teams = data.teams(season)
+TABS = ("predict", "track", "upgrades", "news", "model")
+tab = dict(zip(TABS, st.tabs([t(f"tab.{k}") for k in TABS])))
+
+# ------------------------------------------------------------------ spėjimas
+
+with tab["predict"]:
     if done:  # įvykusi sesija – spėjame taip, lyg būtume prieš ją
         w = weights_before(version(app), kind, srow.date_utc, data)
         out = model.predict(data, season, rnd, session, before=srow.date_utc, weights=w)
     else:
         out = model.predict(data, season, rnd, session, weights=fitted[kind][0])
-    st.session_state["out"] = (season, rnd, session, out)
-
-    start = datetime.fromisoformat(srow.date_utc).astimezone()
-    status = t("predict.status_done" if done else "predict.status_upcoming")
     head, action = st.columns([4, 1.3], vertical_alignment="bottom")
     with head:
-        ui.event_title(f"{season} {ev['name']}", [SESSION[session], f"{t(f'weekday.{start.weekday()}')} "
-                                                  f"{start:%m-%d %H:%M}", ev.circuit, status], highlight=SESSION[session])
-    if action.button(t("predict.save"), width="stretch", help=t("predict.save_help")):
+        ui.event_title(f"{season} {ev['name']}", event_meta, highlight=SESSION[session])
+    if action.button(t("predict.save"), width="stretch"):
         model.save_prediction(app.db, season, rnd, session, out)
         report.write(app.report_path, data, fitted, last=(ev["name"], session, out, ev.circuit))
         st.toast(t("predict.saved"))
@@ -254,41 +346,96 @@ with tab["predict"]:
         actual = data.top3(season, rnd, session)
         ui.note(t("predict.done_title"), t("predict.done_text", actual=" – ".join(actual),
                                            points=model.score(out["pick"], actual)), color=ui.MUTED)
-    teams = data.teams(season)
     ui.label(t("predict.pick"))
     ui.pick_cards(out["pick"], out["table"], teams, ref.team_color, t("pick.exact"), t("pick.top3"))
-
+    if pd.notna(srow.track_rain_frac):
+        rain_sub = t("rain.track", frac=f"{srow.track_rain_frac:.0%}")
+    elif pd.notna(srow.fc_pop):
+        rain_sub = t("rain.forecast", mm=f"{srow.rain_mm or 0:.1f}", region=f"{srow.region_rain_mm:.1f}")
+    else:
+        rain_sub = t("rain.none")
+    ui.tiles([(t("tile.expected"), f"{out['expected']:.2f}", t("tile.expected_sub")),
+              (t("tile.rain"), f"{out['rain']:.0%}", rain_sub),
+              (t("tile.temp"), f"{srow.temp_c:.0f} °C" if pd.notna(srow.temp_c) else "–", t("tile.temp_sub")),
+              (t("track.overtaking"), f"{ref.tracks.overtaking(ev.location):g}/5", t("track.overtaking_d"))])
+    if out["rain"] >= 0.5:
+        ui.note(t("rain.note_title"), t("rain.note"))
     left, right = st.columns([3, 2], gap="large")
     with left:
-        if pd.notna(srow.track_rain_frac):
-            rain_sub = t("rain.track", frac=f"{srow.track_rain_frac:.0%}")
-        elif pd.notna(srow.fc_pop):
-            rain_sub = t("rain.forecast", mm=f"{srow.rain_mm or 0:.1f}", region=f"{srow.region_rain_mm:.1f}")
-        else:
-            rain_sub = t("rain.none")
-        ui.tiles([(t("tile.expected"), f"{out['expected']:.2f}", t("tile.expected_sub")),
-                  (t("tile.rain"), f"{out['rain']:.0%}", rain_sub),
-                  (t("tile.temp"), f"{srow.temp_c:.0f} °C" if pd.notna(srow.temp_c) else "–", t("tile.temp_sub"))])
-        if out["rain"] >= 0.5:
-            ui.note(t("rain.note_title"), t("rain.note"))
         ui.section(t("section.probabilities"), t("section.probabilities_sub"))
         ui.probability_table(out["table"], teams, ref.team_color, t("col.driver"), t("col.team"))
     with right:
-        tc = ref.tracks
+        weekend_panel(season, rnd, session, ev, out["table"].index[:8], teams)
+        st.caption(t("track.hint"))
+
+# ------------------------------------------------------------------ trasa
+
+with tab["track"]:
+    tc, info = ref.tracks, app.track_info(data)
+    profile = info.profile(ev.circuit)
+    street = bool(profile.get("gatve"))
+    left, right = st.columns([1.15, 1], gap="large")
+    with left:
         ui.track_card(ev.circuit, f"{ev['country']} · {ev['name']}", ui.load_outline(app.db, ev.circuit), [
             (t("track.tyres"), f"{tc.tyre_severity(ev.location):g}/5 ", tc.tyre_severity(ev.location)),
             (t("track.overtaking"), f"{tc.overtaking(ev.location):g}/5 ", tc.overtaking(ev.location)),
-            (t("track.similar"), ", ".join(c for c, _ in tc.most_similar(ev.circuit, 3)), None),
+            (t("track.similar"), ", ".join(f"{c} {s:.0%}" for c, s in tc.most_similar(ev.circuit, 3)), None),
             (t("track.format"), t("track.sprint" if ev.format and "sprint" in ev.format else "track.conventional"),
              None)], t("track.no_map"))
-        weekend_panel(season, rnd, session, ev, out["table"].index[:8], teams)
+        ui.section(t("track.strategy"))
+        for n in strategy_notes(ev.location, street):
+            ui.note("", n, color=ui.LINE)
+    with right:
+        ui.section(t("track.character"), t("track.character_sub"))
+        items = [(t(f"track.{key}"), f"{profile[col]:g}/5 ", profile[col], t(f"track.{key}_d"))
+                 for key, col in (("speed", "greitis"), ("downforce", "prispaudimas"), ("tyres", "padangos"),
+                                  ("overtaking", "lenkimo_sunkumas")) if col in profile]
+        items.append((t("track.street"), t("track.yes" if street else "track.no"), None, t("track.street_d")))
+        ui.profile_grid(items)
 
-    ui.section(t("section.why"), t("section.why_sub"))
-    ch = 1.0 - S.wet_chaos * out["rain"]
-    ui.contribution_chart(pd.DataFrame({LABEL[f]: out["table"][f] * w * ch for f, w in out["weights"].items()}).head(8),
-                          t("col.driver"), t("why.value"), t("features.col.feature"))
+    ui.section(t("track.schedule"), t("track.schedule_sub"))
+    wk = info.weekend(season, rnd)
+    status = {"ok": t("predict.status_done")}
+    ui.plain_table(
+        [t(f"track.col.{c}") for c in ("session", "time", "status", "rain", "temp", "source", "top3")],
+        [[html.escape(SESSION.get(r.session, r.session)),
+          f"{t(f'weekday.{datetime.fromisoformat(r.date_utc).astimezone().weekday()}')} {local(r.date_utc)}",
+          html.escape(status.get(r.status, t("predict.status_upcoming"))),
+          f"{r.rain_prob:.0%}" if pd.notna(r.rain_prob) else "–",
+          f"{r.temp_c:.0f} °C" if pd.notna(r.temp_c) else "–",
+          html.escape(t.get(f"wsource.{r.weather_source}", r.weather_source) if r.weather_source else "–"),
+          html.escape(r.top3) or "–"] for r in wk.itertuples()],
+        classes=["b", "", "m", "b", "", "m", "b"],
+        row_classes=["hot" if r.session == session else "" for r in wk.itertuples()])
 
-# ------------------------------------------------------------------ požymiai
+    c_pod, c_drv = st.columns([1, 1.3], gap="large")
+    with c_pod:
+        ui.section(t("track.podiums"), t("track.podiums_sub"))
+        pod = info.podiums(ev.circuit, season)
+        if pod.empty:
+            st.caption(t("track.no_history"))
+        else:
+            rows = []
+            for r in pod.itertuples():   # komandos spalva – tų metų komandos
+                yt = data.teams(r.season)
+                rows.append([str(r.season)] + [ui.driver_cell(d, yt.get(d, ""), ref.team_color)
+                                               for d in (r.P1, r.P2, r.P3, r.pole)])
+            ui.plain_table([t("track.col.year"), t("track.col.winner"), "P2", "P3", t("track.col.pole")], rows,
+                           classes=["b", "", "", "", ""])
+    with c_drv:
+        ui.section(t("track.drivers"), t("track.drivers_sub"))
+        drv = info.drivers(ev.circuit, season, data.entry_list(season, rnd, session))
+        if drv.empty:
+            st.caption(t("track.no_history"))
+        else:
+            fmt = lambda v: "–" if pd.isna(v) else f"{v:g}"
+            ui.plain_table([t(f"track.col.{c}") if c != "driver" else t("col.driver")
+                            for c in ("driver", "starts", "avg", "best", "podiums", "wins", "avg_quali")],
+                           [[ui.driver_cell(d, teams.get(d, ""), ref.team_color), fmt(r.starts), fmt(r.avg),
+                             fmt(r.best), fmt(r.podiums), fmt(r.wins), fmt(r.avg_quali)] for d, r in drv.iterrows()],
+                           classes=["", "m", "b", "", "", "", "m"])
+
+# ------------------------------------------------------------------ bolidų atnaujinimai
 
 with tab["upgrades"]:
     brief = app.briefing()
@@ -315,6 +462,8 @@ with tab["upgrades"]:
         ui.heat_table(brief.upgrade_matrix(up_season), t("col.team"), ref.team_color)
         st.caption(t("upgrades.note"))
 
+# ------------------------------------------------------------------ naujienos
+
 with tab["news"]:
     brief = app.briefing()
     st.write(t("news.intro"))
@@ -333,15 +482,32 @@ with tab["news"]:
     else:
         ui.news_list(news_rows(found, team_names))
 
-with tab["features"]:
+# ------------------------------------------------------------------ modelis ir duomenys
+
+with tab["model"]:
+    st.caption(t("model.intro"))
+    with st.container(key="model_area"):
+        SUB = ("why", "features", "backtest", "params", "sql", "data")
+        sub = dict(zip(SUB, st.tabs([t(f"tab.{k}") for k in SUB])))
+
+with sub["why"]:
+    ui.event_title(f"{season} {ev['name']}", event_meta, highlight=SESSION[session])
+    ui.section(t("section.why"), t("section.why_sub"))
+    ch = 1.0 - S.wet_chaos * out["rain"]
+    ui.contribution_chart(pd.DataFrame({LABEL[f]: out["table"][f] * w * ch for f, w in out["weights"].items()}).head(8),
+                          t("col.driver"), t("why.value"), t("features.col.feature"))
+    ui.section(t("features.values", event=ev["name"], session=SESSION[session]), t("features.values_sub"))
+    st.dataframe(out["table"][features.names()].rename(columns=LABEL).round(2), width="stretch")
+
+with sub["features"]:
     (w_q, _), (w_r, _) = fitted["quali"], fitted["race"]
     s_q, s_r = (model.importance(model.effective_weights(w, S)) for w in (w_q, w_r))
     st.markdown(t("features.intro"))
     b1, b2, _ = st.columns([1, 1, 3])
-    if b1.button(t("features.save"), width="stretch", help=t("features.save_help")):
+    if b1.button(t("features.save"), width="stretch"):
         app.save_settings()
         st.toast(t("features.saved"))
-    if b2.button(t("features.reset"), width="stretch", help=t("features.reset_help")):
+    if b2.button(t("features.reset"), width="stretch"):
         for f in features.names():
             st.session_state[f"mult_{f}"] = S.multipliers[f] = 1.0
         st.rerun()
@@ -358,34 +524,34 @@ with tab["features"]:
         init = {} if f"mult_{f.name}" in st.session_state else {"value": S.multiplier(f.name)}
         c[4].slider(LABEL[f.name], 0.0, 2.0, step=0.1, key=f"mult_{f.name}", label_visibility="collapsed", **init)
         st.divider()
-    season_o, rnd_o, session_o, out = st.session_state["out"]
-    ui.section(t("features.values", event=data.event(season_o, rnd_o)["name"], session=SESSION[session_o]),
-               t("features.values_sub"))
-    st.dataframe(out["table"][features.names()].rename(columns=LABEL).round(2), width="stretch")
 
-# ------------------------------------------------------------------ sezono testas
-
-with tab["backtest"]:
+with sub["backtest"]:
     st.write(t("backtest.intro") + (" " + t("backtest.intro_players") if app.has_excel else ""))
-    if st.button(t("backtest.run"), type="primary", help=t("backtest.run_help")):
+    st.caption(t("backtest.run_help"))
+    if st.button(t("backtest.run"), type="primary"):
         bar = st.progress(0.0)
         fresh = app.dataset()
         st.session_state["bt"] = backtest.run(fresh, app.excel().read(fresh.events[fresh.events.season == SEASON]),
-                                              progress=bar.progress)
+                                              progress=lambda f: bar.progress(f, text=f"{f:.0%}"))
         bar.empty()
     if "bt" in st.session_state:
         df = st.session_state["bt"]
         cols = backtest.score_columns(df, ref.players)
         ui.section(t("backtest.total"))
-        st.bar_chart(df[cols].sum().sort_values(ascending=False))
+        st.bar_chart(df[cols].sum().sort_values(ascending=False), color=ui.RED)
         ui.section(t("backtest.sessions"))
         st.dataframe(df.drop(columns="round"), width="stretch", hide_index=True)
         ui.section(t("backtest.by_type"))
         st.dataframe(df.groupby("session")[cols].sum().rename(index=SESSION), width="stretch")
 
-# ------------------------------------------------------------------ SQL
+with sub["params"]:
+    if t.lang != DEFAULT_LANGUAGE:
+        st.caption(t("params.language_note"))
+    if st.button(t("params.refresh")) or not app.report_path.exists():
+        report.write(app.report_path, data, fitted)
+    st.markdown(app.report_path.read_text(encoding="utf-8"))
 
-with tab["sql"]:
+with sub["sql"]:
     left, right = st.columns([3, 1], gap="large")
     with right:
         ui.section(t("sql.tables"), t("sql.tables_sub"))
@@ -416,18 +582,7 @@ with tab["sql"]:
             st.download_button(t("sql.download"), df.to_csv(index=False).encode("utf-8-sig"), "uzklausa.csv",
                                "text/csv")
 
-# ------------------------------------------------------------------ parametrai
-
-with tab["params"]:
-    if t.lang != DEFAULT_LANGUAGE:
-        st.caption(t("params.language_note"))
-    if st.button(t("params.refresh")) or not app.report_path.exists():
-        report.write(app.report_path, data, fitted)
-    st.markdown(app.report_path.read_text(encoding="utf-8"))
-
-# ------------------------------------------------------------------ duomenys ir žinynai
-
-with tab["data"]:
+with sub["data"]:
     ui.section(t("data.reference"), t("data.reference_sub"))
     table = st.selectbox(t("data.table"), visible(REFERENCE_TABLES), format_func=lambda k: t(f"reftable.{k}"))
     edited = st.data_editor(app.db.query(f"SELECT * FROM {table}"), num_rows="dynamic", width="stretch",
@@ -437,7 +592,7 @@ with tab["data"]:
         app.save_reference(table, edited.dropna(subset=[edited.columns[0]]).to_dict("records"))
         st.cache_resource.clear()
         st.rerun()
-    if e2.button(t("data.defaults"), help=t("data.defaults_help"), width="stretch"):
+    if e2.button(t("data.defaults"), width="stretch"):
         app.save_reference(table, app.default_rows(table))
         st.cache_resource.clear()
         st.rerun()
