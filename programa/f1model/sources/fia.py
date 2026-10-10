@@ -108,14 +108,38 @@ def _split_items(body):
     return items
 
 
+def _is_int(s, lo=1, hi=99):
+    return s.isdigit() and lo <= int(s) <= hi
+
+
 def parse_starting_grid(pages):
-    """[(starto vieta, automobilio numeris)] iš starto rikiuotės dokumento."""
-    grid = {}
+    """[(vieta, automobilio numeris)] iš starto rikiuotės ar klasifikacijos dokumento. Palaikomi abu FIA
+    išdėstymai: „1 3 Max VERSTAPPEN ...“ vienoje eilutėje ir (2026) vieta, numeris, vardas – atskirose eilutėse.
+    Startuojantys iš boksų („PIT LANE“) – rikiuotės gale."""
+    grid, pit_lane = {}, []
     for text in pages:
-        for ln in text.splitlines():
-            m = GRID_ROW_RE.match(ln.strip())
+        lines = [ln.strip() for ln in text.splitlines()]
+        in_pit = False
+        for i, ln in enumerate(lines):
+            if "PIT LANE" in ln.upper():
+                in_pit = True
+                continue
+            if in_pit and ("PENALT" in ln.upper() or ln.startswith("The F")):
+                in_pit = False
+                break
+            nxt = lines[i + 1:i + 3] + ["", ""]
+            if in_pit:
+                if _is_int(ln) and re.match(r"[A-Za-zÀ-ž]", nxt[0]):
+                    pit_lane.append(int(ln))
+                continue
+            m = GRID_ROW_RE.match(ln)
             if m and 1 <= int(m.group(1)) <= 30:
                 grid.setdefault(int(m.group(2)), int(m.group(1)))
+            elif _is_int(ln, 1, 30) and _is_int(nxt[0]) and re.match(r"[A-Za-zÀ-ž]", nxt[1]):
+                grid.setdefault(int(nxt[0]), int(ln))
+    last = max(grid.values(), default=0)
+    for k, num in enumerate(n for n in pit_lane if n not in grid):
+        grid[num] = last + k + 1
     return sorted((pos, num) for num, pos in grid.items())
 
 
@@ -180,6 +204,12 @@ class _FiaSource(DataSource):
         return self.db.query("SELECT round, name FROM events WHERE season=? AND date <= ? ORDER BY round",
                              (season, limit))
 
+    def _driver_numbers(self, season):
+        """{automobilio numeris: vairuotojas} pagal šio sezono rezultatus."""
+        r = self.db.query("SELECT number, driver FROM results WHERE season=? AND number IS NOT NULL "
+                          "ORDER BY round", (season,))
+        return {int(float(n)): d for n, d in zip(r.number, r.driver) if str(n).replace(".0", "").isdigit()}
+
 
 class UpgradeSource(_FiaSource):
     label = "FIA bolidų atnaujinimai"
@@ -207,17 +237,24 @@ class UpgradeSource(_FiaSource):
 
 
 class GridSource(_FiaSource):
-    """Starto rikiuotė su baudomis – tik artėjančioms (dar neįvykusioms) lenktynėms ir sprintams."""
+    """Starto rikiuotė su baudomis: artėjančioms lenktynėms ir sprintams, taip pat neseniai įvykusioms,
+    jei rikiuotė nebuvo surinkta laiku, o oficialiuose rezultatuose starto vietų nėra."""
     label = "FIA starto rikiuotė"
     DOC_FOR = {"R": ("final_starting_grid", "provisional_starting_grid"),
                "S": ("final_sprint_grid", "provisional_sprint_grid", "final_sprint_starting_grid",
                      "provisional_sprint_starting_grid")}
+    BACKFILL_DAYS = 14
 
     def update(self, season):
+        now = datetime.now(timezone.utc)
         pending = self.db.query(
             "SELECT s.round, s.session, e.name FROM sessions s JOIN events e USING(season, round) "
-            "WHERE s.season=? AND s.session IN ('R', 'S') AND s.status != 'ok' AND s.date_utc <= ?",
-            (season, (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()))
+            "WHERE s.season=? AND s.session IN ('R', 'S') AND s.date_utc <= ? AND (s.status NOT IN ('ok', 'fia') "
+            "  OR (s.date_utc >= ? AND NOT EXISTS (SELECT 1 FROM starto_rikiuote g WHERE g.season=s.season "
+            "      AND g.round=s.round AND g.session=s.session) "
+            "  AND NOT EXISTS (SELECT 1 FROM results r WHERE r.season=s.season AND r.round=s.round "
+            "      AND r.session=s.session AND r.grid IS NOT NULL)))",
+            (season, (now + timedelta(days=2)).isoformat(), (now - timedelta(days=self.BACKFILL_DAYS)).isoformat()))
         numbers = self._driver_numbers(season)
         groups = pending.groupby(["round", "name"])
         for i, ((rnd, name), group) in enumerate(groups):
@@ -235,7 +272,47 @@ class GridSource(_FiaSource):
                                   replace_where=("season=? AND round=? AND session=?", (season, int(rnd), session)))
                     log.info("FIA starto rikiuotė: %s %s %s (%s vairuotojų)", season, name, session, len(grid))
 
-    def _driver_numbers(self, season):
-        r = self.db.query("SELECT number, driver FROM results WHERE season=? AND number IS NOT NULL "
-                          "ORDER BY round", (season,))
-        return {int(float(n)): d for n, d in zip(r.number, r.driver) if str(n).replace(".0", "").isdigit()}
+
+class ClassificationSource(_FiaSource):
+    """Atsarginis rezultatų šaltinis: FIA klasifikacija (provisional/final), kai oficialus F1 laiko archyvas
+    (FastF1) dar nepaskelbtas – tai kartais užtrunka kelias valandas. Sesija pažymima būsena „fia“
+    (preliminarus); kai FastF1 duomenys atsiranda, jie rezultatą perrašo."""
+    label = "FIA klasifikacija"
+    DOC_FOR = {"Q": ("final_qualifying_classification", "provisional_qualifying_classification"),
+               "SQ": ("final_sprint_qualifying_classification", "provisional_sprint_qualifying_classification"),
+               "S": ("final_sprint_classification", "provisional_sprint_classification"),
+               "R": ("final_race_classification", "provisional_race_classification")}
+    MIN_AFTER_START = {"SQ": 50, "Q": 65, "S": 50, "R": 120}   # kada dokumentas paprastai jau paskelbtas
+
+    def update(self, season):
+        now = datetime.now(timezone.utc)
+        pending = self.db.query(
+            "SELECT s.round, s.session, s.date_utc, e.name FROM sessions s JOIN events e USING(season, round) "
+            "WHERE s.season=? AND s.session IN ('SQ', 'Q', 'S', 'R') AND s.status NOT IN ('ok', 'fia') "
+            "AND s.date_utc >= ?", (season, (now - timedelta(days=7)).isoformat()))
+        pending = pending[[datetime.fromisoformat(d) + timedelta(minutes=self.MIN_AFTER_START[c]) <= now
+                           for d, c in zip(pending.date_utc, pending.session)]]
+        numbers, teams = self._driver_numbers(season), self._teams(season)
+        groups = pending.groupby(["round", "name"])
+        for i, ((rnd, name), group) in enumerate(groups):
+            self.progress(i, groups.ngroups, name)
+            pdfs = self.docs.pdfs(season, name)
+            for session in group.session:
+                url = next((u for kind in self.DOC_FOR[session] for u in pdfs if kind in doc_key(u)), None)
+                if not url:
+                    continue
+                rows = [dict(season=season, round=int(rnd), session=session, driver=numbers[n], number=str(n),
+                             team=teams.get(numbers[n]), position=pos, official_position=pos,
+                             status="Finished" if session in ("R", "S") else None)
+                        for pos, n in parse_starting_grid(self.docs.pages(url)) if n in numbers]
+                if len(rows) < 3:
+                    continue
+                self.db.write("results", rows, replace_where=("season=? AND round=? AND session=?",
+                                                              (season, int(rnd), session)))
+                self.db.execute("UPDATE sessions SET status='fia', loaded_at=? WHERE season=? AND round=? AND session=?",
+                                (now.isoformat(), season, int(rnd), session))
+                log.info("FIA klasifikacija (preliminari): %s %s %s – %s vairuotojų", season, name, session, len(rows))
+
+    def _teams(self, season):
+        r = self.db.query("SELECT driver, team FROM results WHERE season=? ORDER BY round", (season,))
+        return dict(zip(r.driver, r.team))

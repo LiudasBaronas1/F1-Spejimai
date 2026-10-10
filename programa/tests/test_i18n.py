@@ -11,8 +11,8 @@ class TranslationTest(unittest.TestCase):
 
     def test_languages_and_texts_seeded(self):
         self.assertEqual(list(self.app.translations().languages()), ["lt", "en"])   # numatytoji – pirma
-        self.assertEqual(self.app.translator("en")("tab.predict"), "Prediction")
-        self.assertEqual(self.app.translator("lt")("tab.predict"), "Spėjimas")
+        self.assertEqual(self.app.translator("en")("nav.next"), "Next session")
+        self.assertEqual(self.app.translator("lt")("nav.next"), "Artimiausia sesija")
 
     def test_every_ui_key_has_english(self):
         missing = [k for k, by in translations.texts().items() if "en" not in by and not k.startswith("tableinfo.")]
@@ -29,10 +29,10 @@ class TranslationTest(unittest.TestCase):
 
     def test_seed_keeps_user_edits_and_adds_new_keys(self):
         db = self.app.db
-        db.execute("UPDATE vertimai SET tekstas='Mano' WHERE raktas='tab.predict' AND kalba='en'")
-        TranslationRepository(db).seed({"en": "English"}, {"tab.predict": {"en": "Prediction"}, "new.key": {"en": "New"}})
+        db.execute("UPDATE vertimai SET tekstas='Mano' WHERE raktas='nav.next' AND kalba='en'")
+        TranslationRepository(db).seed({"en": "English"}, {"nav.next": {"en": "Next session"}, "new.key": {"en": "New"}})
         t = self.app.translator("en")
-        self.assertEqual((t("tab.predict"), t("new.key")), ("Mano", "New"))
+        self.assertEqual((t("nav.next"), t("new.key")), ("Mano", "New"))
 
     def test_unknown_or_saved_language(self):
         self.assertEqual(self.app.translator("xx").lang, "lt")

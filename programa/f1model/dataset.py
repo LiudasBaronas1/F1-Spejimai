@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from .config import COMPETITIVE, QUALI_TYPE, SEASON
+from .config import COMPETITIVE, DONE_STATUSES, QUALI_TYPE, SEASON
 from .reference import Reference
 from .settings import Settings
 
@@ -72,12 +72,12 @@ class Dataset:
         return self.events[(self.events.season == season) & (self.events["round"] == rnd)].iloc[0]
 
     def done_sessions(self, seasons, types=COMPETITIVE, before=None, by_date=False):
-        s = self.sess[self.sess.season.isin(seasons) & (self.sess.status == "ok") & self.sess.session.isin(types)]
+        s = self.sess[self.sess.season.isin(seasons) & self.sess.status.isin(DONE_STATUSES) & self.sess.session.isin(types)]
         s = s[s.date_utc < before] if before else s
         return s.sort_values("date_utc") if by_date else s
 
     def next_session(self, now_iso):
-        s = self.sess[(self.sess.season == SEASON) & (self.sess.status != "ok")
+        s = self.sess[(self.sess.season == SEASON) & ~self.sess.status.isin(DONE_STATUSES)
                       & self.sess.session.isin(COMPETITIVE) & (self.sess.date_utc >= now_iso)].sort_values("date_utc")
         return (int(s.iloc[0]["round"]), s.iloc[0]["session"]) if not s.empty else (None, None)
 

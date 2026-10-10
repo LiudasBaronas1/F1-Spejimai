@@ -2,6 +2,8 @@
 podiumai ir vairuotojų rezultatai šioje trasoje. Tik skaitymas iš `Dataset` – modelio neliečia."""
 import pandas as pd
 
+from .config import DONE_STATUSES
+
 PROFILE = ("greitis", "prispaudimas", "padangos", "lenkimo_sunkumas", "gatve")
 
 
@@ -20,7 +22,8 @@ class TrackInfo:
     def weekend(self, season, rnd):
         """Visos savaitgalio sesijos: laikas, būsena, orai ir (įvykusioms) TOP3."""
         s = self.data.session_rows(season, rnd).sort_values("date_utc")
-        top3 = [" – ".join(self.data.top3(season, rnd, c)) if st == "ok" else "" for c, st in zip(s.session, s.status)]
+        top3 = [" – ".join(self.data.top3(season, rnd, c)) if st in DONE_STATUSES else ""
+                for c, st in zip(s.session, s.status)]
         return s.assign(top3=top3)[["session", "date_utc", "status", "rain_prob", "track_rain_frac", "temp_c",
                                     "weather_source", "top3"]]
 

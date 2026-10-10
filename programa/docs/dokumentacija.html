@@ -88,19 +88,19 @@ Baudos, skirtos jau po finišo, neįskaičiuojamos – taip, kaip numato mūsų 
   <li><b>Paleiskite programą.</b> Atsisiųstame ir išskleistame aplanke dukart spustelėkite <b>„F1 Spėjimai.vbs“</b>.
       Pirmą kartą programa pati įdiegs, ko reikia (Python, jei jo nėra, ir bibliotekas; 2–5 min., reikia interneto)
       ir sukurs darbalaukio nuorodą <b>„F1 Spejimai“</b> – vėliau paleiskite per ją. Atsidarys atskiras langas.</li>
-  <li><b>Atnaujinkite duomenis.</b> Kairėje paspauskite <b>„Atnaujinti duomenis“</b>. Programa parsisiųs naujausius
-      rezultatus, treniruočių laikus, orų prognozę ir lažybų rinkų kainas (apie 1–2 minutes). Didelis eigos skydelis
-      rodo, kiek procentų atlikta, kiek liko laukti, kurį šaltinį programa tuo metu siunčiasi, ką būtent (etapą, sesiją,
-      rinką – pvz. „13 iš 23“) ir kiekvieno šaltinio būseną: laukia, vyksta, atlikta (su trukme) ar klaida. Po atnaujinimo
-      modelis persimoko – tai rodo toks pat skydelis (kuris modelis, kelinta sesija).</li>
-  <li><b>Pasirinkite sesiją.</b> Viršuje esančioje juostoje – <b>Metai</b>, <b>Grand Prix</b> ir <b>Sesija</b>. Pasirinkimas
-      galioja visiems skyriams (Spėjimas, Trasa, Modelio paaiškinimas). Atidarius programą automatiškai parenkama
-      artimiausia sesija.</li>
-  <li><b>Perskaitykite siūlomą spėjimą.</b> Trys kortelės (1, 2, 3 vieta) – tai siūlomas trejetas. Prie kiekvieno
-      vairuotojo nurodyta, kokia tikimybė, kad jis bus tiksliai toje vietoje ir kad pateks į TOP3.</li>
+  <li><b>Atsidarys „Artimiausia sesija“.</b> Viršuje matysite, kokia sesija artėja ir po kiek laiko ji prasidės.</li>
+  <li><b>Paspauskite „Atnaujinti duomenis“.</b> Programa parsisiųs naujausius rezultatus, treniruotes, orų prognozę,
+      lažybų rinkų kainas, FIA dokumentus ir naujienas (apie 1–2 minutes). Eigos skydelis rodo, kiek procentų atlikta,
+      kiek dar liks laukti (pagal tai, kiek kiekvienas šaltinis užtruko ankstesniais kartais), ką būtent programa dabar
+      siunčiasi (pvz. „Regiono orų prognozė – 2026 R18, 18 iš 23“) ir kiekvieno šaltinio būseną su laiku.
+      Laikmačiai eina sekundė po sekundės. Tada modelis persimoko – tai rodo toks pat skydelis.</li>
+  <li><b>Patikrinkite „Duomenys šiam spėjimui“.</b> Žalia – viskas gerai, geltona – verta atkreipti dėmesį (pvz. senos
+      lažybų kainos ar preliminarus rezultatas), raudona – trūksta (pvz. kvalifikacijos rezultatas dar nepaskelbtas).
+      Prie kiekvieno punkto parašyta, ką daryti.</li>
+  <li><b>Perskaitykite siūlomą spėjimą.</b> Trys kortelės (1, 2, 3 vieta). Kiekvienoje – tikimybė būti tiksliai toje
+      vietoje ir patekti į TOP3, o apačioje „Kodėl“ – du svarbiausi to vairuotojo pasirinkimo motyvai.</li>
   <li><b>Spėkite kuo vėliau.</b> Taisyklės leidžia keisti spėjimą iki sesijos pradžios. Geriausia atnaujinti duomenis
-      ir pažiūrėti spėjimą likus 30–60 minučių iki sesijos – tada žinomi treniruočių laikai, starto rikiuotė,
-      naujausia orų prognozė ir lažybų kainos.</li>
+      likus 30–60 minučių iki sesijos.</li>
 </ol>
 <div class="box"><b class="t">Patarimas</b>Prieš lenktynes modelis jau žino starto rikiuotę (kvalifikacijos rezultatą) –
 tai vienas svarbiausių signalų. Todėl lenktynių spėjimą verta žiūrėti po kvalifikacijos, ne prieš ją.</div>
@@ -110,78 +110,47 @@ atsidarys akimirksniu.</p>
 
 <section>
 <h2>3. Programos langas</h2>
-<p>Programa turi penkis skyrius: <b>Spėjimas</b>, <b>Trasa</b>, <b>Atnaujinimai</b>, <b>Naujienos</b> ir
-<b>Modelis ir duomenys</b>. Kairėje juostoje – kalba, mygtukas „Atnaujinti duomenis“, paskutinio atnaujinimo laikas ir
-artimiausia sesija (po kiek laiko ji prasidės).</p>
-<img class="shot" src="img/eiga.jpg">
-<p class="cap">Eigos skydelis: bendra pažanga, kas daroma dabar ir kiekvieno žingsnio būsena.</p>
-<h3>Skyrius „Spėjimas“</h3>
+<p>Kairėje – meniu pagal tai, ką norite daryti. Po juo – mygtukas „Atnaujinti duomenis“, paskutinio atnaujinimo laikas ir
+kalba.</p>
+<table>
+  <tr><th style="width:24%">Meniu punktas</th><th>Kam skirtas</th></tr>
+  <tr><td>Artimiausia sesija</td><td>Atsidaro pirmas. Kas artėja ir po kiek laiko, ar surinkti visi reikalingi duomenys,
+      siūlomas spėjimas su paaiškinimu, tikimybės ir svarbiausi etapo faktai.</td></tr>
+  <tr><td>Etapas</td><td>Bet kuris etapas ir sesija (sesijos – mygtukais). Trys dalys: <b>Spėjimas</b>,
+      <b>Trasa ir orai</b> (žemėlapis, charakteristika, strategija, tvarkaraštis su orais, ankstesni metai, vairuotojai
+      šioje trasoje) ir <b>Atnaujinimai ir naujienos</b> (to etapo naujos detalės ir naujienos).</td></tr>
+  <tr><td>Sezonas</td><td><b>Kalendorius</b> (visi etapai, pole ir podiumas), <b>Modelis prieš žaidėjus</b> (sezono
+      testas) ir <b>Atnaujinimų apžvalga</b>.</td></tr>
+  <tr><td>Naujienos</td><td>Visos naujienos su filtrais pagal komandą, temą, šaltinį ir paiešką.</td></tr>
+  <tr><td>Modelis</td><td><b>Kaip veikia</b> (5 žingsniai ir kas labiausiai lemia spėjimą), <b>Veiksniai ir svoriai</b>
+      (išmokti svoriai ir daugikliai), <b>Parametrai</b>.</td></tr>
+  <tr><td>Duomenys</td><td><b>Duomenų būklė</b> (kiekviena sezono sesija: oficialūs duomenys, preliminarus FIA rezultatas,
+      trūksta ar dar neįvyko), <b>SQL</b> ir <b>Žinynai</b> (redaguojami: trasos, komandų spalvos, vertimai ir kt.).</td></tr>
+</table>
 <img class="shot" src="img/spejimas.jpg">
-<p class="cap">Sesijos pasirinkimas, siūlomas trejetas ir svarbiausi rodikliai.</p>
-<table>
-  <tr><th style="width:32%">Dalis</th><th>Ką rodo</th></tr>
-  <tr><td>Siūlomas spėjimas</td><td>Trejetas su daugiausiai tikėtinų taškų. Spalvota juosta – komandos spalva.</td></tr>
-  <tr><td>Tikėtini taškai</td><td>Kiek taškų vidutiniškai atneštų šis spėjimas (iš 6). Įprastai 2–3.</td></tr>
-  <tr><td>Lietaus tikimybė</td><td>Ar lis sesijos metu. Įvykusioms sesijoms – faktas iš trasos jutiklių.</td></tr>
-  <tr><td>Lenkimo sunkumas</td><td>Kuo didesnis (1–5), tuo svarbesnė starto vieta.</td></tr>
-  <tr><td>Tikimybės</td><td>Kiekvieno vairuotojo tikimybė būti P1, P2, P3 ir TOP3.</td></tr>
-  <tr><td>Išsaugoti spėjimą</td><td>Mygtukas šalia etapo pavadinimo: įrašo spėjimą į duomenų bazę.</td></tr>
-  <tr><td>Svarbu šiam etapui</td><td>FIA starto baudos (kas startuoja toliau nei kvalifikavosi), kurios komandos atvežė
-      naujų detalių ir svarbios naujienos (baudos, variklis, vairuotojai, orai) apie pirmaujančias komandas.</td></tr>
-</table>
-<div class="box"><b class="t">Kalba</b>Kairėje juostoje viršuje – kalbos pasirinkimas (lietuvių / English). Pasirinkimas
-įsimenamas. Visi tekstai laikomi duomenų bazėje, juos galima taisyti skyriuje „Modelis ir duomenys“ → „Duomenys“ →
-„Vertimai“.</div>
-<p>Pasirinkus jau įvykusią sesiją, modelis spėja <b>tik su tais duomenimis, kurie buvo žinomi prieš ją</b>, ir parodo
-tikrą rezultatą bei kiek taškų spėjimas būtų pelnęs. Taip galima patikrinti modelį bet kuriame etape nuo 2023 m.</p>
+<p class="cap">„Artimiausia sesija“: laikmatis, duomenų patikra ir siūlomas spėjimas.</p>
+<div class="box"><b class="t">Kalba</b>Kairėje apačioje – kalbos pasirinkimas (lietuvių / English). Pasirinkimas
+įsimenamas. Visi tekstai laikomi duomenų bazėje, juos galima taisyti meniu „Duomenys“ → „Žinynai“ → „Vertimai“.</div>
+<p>Pasirinkus jau įvykusią sesiją (meniu „Etapas“), modelis spėja <b>tik su tais duomenimis, kurie buvo žinomi prieš ją</b>,
+ir parodo tikrą rezultatą bei kiek taškų spėjimas būtų pelnęs.</p>
 </section>
 
 <section>
-<h3 style="margin-top:0">Skyrius „Trasa“</h3>
+<h3 style="margin-top:0">Eigos skydelis</h3>
+<img class="shot" src="img/eiga.jpg">
+<p class="cap">Atnaujinimas: bendra pažanga ir likęs laikas, kas daroma dabar, kiekvieno šaltinio būsena ir trukmė.</p>
+<h3>Etapas → „Trasa ir orai“</h3>
 <img class="shot" src="img/trasa.jpg">
-<p class="cap">Trasos žemėlapis, charakteristikos ir strategija.</p>
-<table>
-  <tr><th style="width:32%">Dalis</th><th>Ką rodo</th></tr>
-  <tr><td>Trasos kortelė</td><td>Žemėlapis (raudona žymė – starto/finišo linija, skaičiai – posūkiai), padangų apkrova,
-      lenkimo sunkumas, panašiausios trasos (su panašumu procentais) ir savaitgalio formatas.</td></tr>
-  <tr><td>Trasos charakteristika</td><td>Greitis, prispaudimas, padangų apkrova, lenkimo sunkumas (1–5) ir ar tai gatvių
-      trasa – su paaiškinimu, ką tai reiškia.</td></tr>
-  <tr><td>Strategija</td><td>Kiek sustojimų tikėtina, ar svarbi starto vieta, ar didelė saugos automobilio tikimybė.</td></tr>
-  <tr><td>Tvarkaraštis ir orai</td><td>Visos savaitgalio sesijos jūsų laiku: būsena, lietaus tikimybė, temperatūra,
-      orų šaltinis (prognozė ar trasos jutikliai) ir įvykusių sesijų TOP3. Pasirinkta sesija paryškinta.</td></tr>
-  <tr><td>Ankstesni metai</td><td>Šios trasos lenktynių podiumai ir pole pozicijos nuo 2023 m.</td></tr>
-  <tr><td>Vairuotojai šioje trasoje</td><td>Šio savaitgalio vairuotojų startai, vidutinė ir geriausia vieta, podiumai,
-      pergalės ir vidutinė kvalifikacijos vieta šioje trasoje.</td></tr>
-</table>
-
-<h3>Kiti skyriai</h3>
-<table>
-  <tr><th style="width:22%">Skyrius</th><th>Kam skirtas</th></tr>
-  <tr><td>Atnaujinimai</td><td>Kiekvienos komandos naujos bolido detalės kiekvienam etapui iš oficialių FIA dokumentų
-      („Car Presentation Submissions“, 2024+): detalė, paskirtis (našumas / trasai / patikimumas) ir aprašymas, bei
-      sezono apžvalga – kas ir kada atvežė daugiausiai naujovių. Kiekvienoje kortelėje – nuoroda į originalų FIA
-      dokumentą (atsidaro ties tos komandos puslapiu) ir straipsniai apie tos komandos atnaujinimus.</td></tr>
-  <tr><td>Naujienos</td><td>Naujienos iš formula1.com, Autosport, Motorsport.com, RaceFans ir BBC, automatiškai pažymėtos
-      komandomis ir temomis (atnaujinimai, baudos, variklis, vairuotojai, orai, taisyklės, padangos). Filtrai ir paieška.</td></tr>
-  <tr><td>Modelis ir duomenys</td><td>Viskas apie modelį, vidiniuose skirtukuose:
-      <b>Spėjimo paaiškinimas</b> – iš ko susideda kiekvieno vairuotojo „stiprumas“ (forma, starto vieta, lažybų rinka ir
-      t. t.) ir visų požymių reikšmės pasirinktai sesijai; <b>Požymiai</b> – išmokti svoriai ir slankikliai
-      (1 = kaip išmokta, 0 = neatsižvelgti); <b>Sezono testas</b> – kiek taškų modelis būtų surinkęs kiekvienoje sesijoje;
-      <b>Parametrai</b> – nustatymų ir svorių suvestinė (PARAMETRAI.md); <b>SQL</b> – duomenų bazės peržiūra (tik
-      skaitymui); <b>Duomenys</b> – redaguojami žinynai (trasos, komandų spalvos, vertimai ir kt.).</td></tr>
-</table>
+<p class="cap">Trasos žemėlapis, charakteristika, strategija; žemiau – tvarkaraštis su orais ir istorija.</p>
 </section>
 
 <section>
-<h3 style="margin-top:0">Modelis ir duomenys → „Požymiai“</h3>
+<h3 style="margin-top:0">Duomenys → „Duomenų būklė“</h3>
+<img class="shot" src="img/duomenys.jpg">
+<p class="cap">Kiekvienos sezono sesijos duomenų būklė. Raudona – sesija įvyko, bet duomenų dar nėra.</p>
+<h3>Modelis → „Veiksniai ir svoriai“</h3>
 <img class="shot" src="img/pozymiai.jpg">
 <p class="cap">Kiekvienas veiksnys su paaiškinimu, išmoktu svoriu kvalifikacijai ir lenktynėms bei daugikliu.</p>
-<h3>Skyrius „Atnaujinimai“</h3>
-<img class="shot" src="img/atnaujinimai.jpg">
-<p class="cap">Komandų naujos bolido detalės pasirinktam etapui iš oficialių FIA dokumentų.</p>
-<h3>Modelis ir duomenys → „Duomenys“</h3>
-<img class="shot" src="img/duomenys.jpg">
-<p class="cap">Žinynų redagavimas. Pakeitus, pavyzdžiui, trasos lenkimo sunkumą, modelis persimoko automatiškai.</p>
 </section>
 
 <section>
@@ -228,7 +197,8 @@ duoda 57 % laimėti. Modelis apskaičiuoja: VER P1 – 35 %, TOP3 – 78 %. Siū
   <tr><td>Open-Meteo</td><td>Orų prognozė trasai ir 15 km aplink</td><td>Kiekvieną atnaujinimą</td></tr>
   <tr><td>Kalshi, Polymarket</td><td>Lažybų biržų kainos (= tikimybės)</td><td>Kiekvieną atnaujinimą</td></tr>
   <tr><td>Lažybininkai (bet365 ir kt.)</td><td>Nugalėtojo koeficientai</td><td>Kas savaitę (tik atsarginis)</td></tr>
-  <tr><td>FIA dokumentai (fia.com)</td><td>Bolidų atnaujinimai; oficiali starto rikiuotė su baudomis</td>
+  <tr><td>FIA dokumentai (fia.com)</td><td>Bolidų atnaujinimai; oficiali starto rikiuotė su baudomis; sesijų klasifikacija (atsarginis
+      rezultatų šaltinis, kol F1 archyvas vėluoja)</td>
       <td>Kiekvieną atnaujinimą (savaitgalio metu)</td></tr>
   <tr><td>Naujienų šaltiniai (RSS)</td><td>formula1.com, Autosport, Motorsport.com, RaceFans, BBC</td>
       <td>Kiekvieną atnaujinimą</td></tr>
@@ -243,7 +213,13 @@ paklaida sumažėjo 45 %.</p>
 <h3>Starto baudos</h3>
 <p>Lenktynių spėjimui labai svarbi starto vieta. Kol lenktynės neįvyko, programa ima <b>oficialią FIA starto rikiuotę</b>
 (su baudomis už variklio elementus, susidūrimus ir pan.), o ne vien kvalifikacijos rezultatą. Pvz. 2026 m. Kuala Lumpure
-HAD kvalifikavosi 3-as, bet dėl baudos startavo 8-as – modelis tai žino.</p>
+HAD kvalifikavosi 3-as, bet dėl baudos startavo 8-as – modelis tai žino. Jei rikiuotė nebuvo surinkta prieš
+lenktynes, o oficialiuose rezultatuose starto vietų nėra, ji parsiunčiama vėliau (iki 14 d.).</p>
+<h3>Kai oficialūs duomenys vėluoja</h3>
+<p>Oficialus F1 laiko archyvas (FastF1) paprastai paskelbiamas per 1–2 val. po sesijos, bet kartais vėluoja kelias valandas.
+Tada programa rezultatą paima iš <b>FIA klasifikacijos</b> dokumento (fia.com) ir pažymi jį kaip <b>preliminarų</b>.
+Kai oficialūs duomenys atsiranda, kitas atnaujinimas jį automatiškai pakeičia. Pvz. 2026 m. Singapūro kvalifikacijos
+F1 archyvas nebuvo paskelbtas net po 2 val., o FIA klasifikacija – jau buvo.</p>
 <h3>Lažybų rinka</h3>
 <p>Biržų kainos atspindi tūkstančių žmonių nuomonę ir naujausią informaciją. Modelis ima paskutinę kainą prieš sesiją ir
 sujungia ją su kitais veiksniais. Kiek pasitikėti rinka, modelis išmoksta pats: bandyta rinkai suteikti dar daugiau svorio
@@ -256,7 +232,7 @@ kainos yra tik dalies vairuotojų, tikimybės nebedidinamos dirbtinai (anksčiau
 <section>
 <h2>6. Kiek modelis tikslus</h2>
 <p>Modelis tikrinamas sąžiningai: kiekvienai praeities sesijai jis spėja <b>tik su tais duomenimis, kurie buvo žinomi prieš ją</b>,
-ir rezultatas palyginamas su tikru. 2026 m. sezone (iki Singapūro sprinto, 44 sesijos) modelis surinko <b>127 taškus</b> –
+ir rezultatas palyginamas su tikru. 2026 m. sezone (iki Singapūro kvalifikacijos, 45 sesijos) modelis surinko <b>130 taškų</b> –
 daugiau nei bet kuris mūsų totalizatoriaus žaidėjas.</p>
 <p>2025–2026 m. (104 sesijos) modelis vidutiniškai surenka <b>apie 3 taškus iš 6</b> per sesiją. Tiksliai atspėti visą TOP3
 pavyksta retai: net lažybų rinkos favoritas laimi tik apie 45 % sesijų. Reali viršutinė riba – maždaug 3,2–3,4 taško per
@@ -285,9 +261,9 @@ Išjungti: <code>automatinis_isjungti.bat</code>. Veikia tik kai kompiuteris įj
       duomenys bus parsiųsti automatiškai.</td></tr>
   <tr><td>Pirmas paleidimas nepavyko</td><td>Paleiskite <code>programa\idiegti.bat</code> ir perskaitykite pranešimą. Dažniausiai
       trūksta Python – atsisiųskite jį iš python.org (pažymėkite „Add python.exe to PATH“).</td></tr>
-  <tr><td>Noriu, kad modelis mažiau žiūrėtų į kažką</td><td>Skyriuje „Modelis ir duomenys“ → „Požymiai“ sumažinkite daugiklį ir paspauskite
+  <tr><td>Noriu, kad modelis mažiau žiūrėtų į kažką</td><td>Meniu „Modelis“ → „Veiksniai ir svoriai“ sumažinkite daugiklį ir paspauskite
       „Išsaugoti“.</td></tr>
-  <tr><td>Nesutinku su trasos įvertinimu</td><td>Skyriuje „Modelis ir duomenys“ → „Duomenys“ pasirinkite žinyną „Trasos“, pakeiskite reikšmę ir
+  <tr><td>Nesutinku su trasos įvertinimu</td><td>Meniu „Duomenys“ → „Žinynai“ pasirinkite žinyną „Trasos“, pakeiskite reikšmę ir
       išsaugokite.</td></tr>
   <tr><td>Kodėl modelis siūlo ne favoritą?</td><td>Trejetas parenkamas pagal tikėtinus taškus. Žr. „Kodėl?“ grafiką
       ir tikimybių lentelę.</td></tr>

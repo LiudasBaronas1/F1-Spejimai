@@ -37,6 +37,13 @@ class FiaParsingTest(unittest.TestCase):
                "8 6 Isack HADJAR *\nCar 6 - 5 place grid penalty"
         self.assertEqual(fia.parse_starting_grid([page]), [(1, 3), (2, 44), (8, 6)])
 
+    def test_starting_grid_2026_layout_and_pit_lane(self):
+        """2026 m. dokumentuose vieta, numeris ir vardas – atskirose eilutėsė; startuojantys iš boksų – gale."""
+        page = ("1\n3\nMax VERSTAPPEN\nOracle Red Bull Racing\n1:31.156\n3\n16\nCharles LECLERC\nFerrari\n"
+                "2\n63\nGeorge RUSSELL\nMercedes\n1:31.276\nDRIVERS REQUIRED TO START FROM THE PIT LANE\n55\n"
+                "Carlos SAINZ *\nWilliams\n* PENALTIES\nCar 55 - pit lane\nThe F\n1\n FORMULA \n90\nFoo")
+        self.assertEqual(fia.parse_starting_grid([page]), [(1, 3), (2, 63), (3, 16), (4, 55)])
+
     def test_doc_key(self):
         self.assertEqual(fia.doc_key("https://x/2024 Italian GP - Car Presentation Submissions.pdf"),
                          "2024_italian_gp_-_car_presentation_submissions.pdf")
@@ -82,6 +89,20 @@ class TeamIdentityTest(unittest.TestCase):
                          {"racing bulls"})
         self.assertEqual(ref.team_key("Oracle Red Bull Racing"), "red bull")
         self.assertIsNone(ref.team_key("Nežinoma"))
+
+
+class WeekendChecksTest(unittest.TestCase):
+    def test_checklist_reports_missing_results_and_odds(self):
+        from f1model import status
+        app, _ = temp_app()
+        synthetic_season(app.db, rounds=6)          # 7 etapo kvalifikacija praėjo, bet duomenų nėra
+        checks = {c.key: c for c in status.weekend_checks(app.dataset(), app.db, 2026, 7, "R")}
+        self.assertLessEqual({"results", "grid", "weather", "odds", "news"}, set(checks))
+        self.assertEqual((checks["results"].state, checks["results"].params["sessions"]), ("missing", ["Q"]))
+        self.assertEqual((checks["grid"].state, checks["odds"].state), ("missing", "missing"))
+        app.db.execute("UPDATE sessions SET status='fia' WHERE round=7 AND session='Q'")   # preliminarus FIA rezultatas
+        checks = {c.key: c for c in status.weekend_checks(app.dataset(), app.db, 2026, 7, "R")}
+        self.assertEqual(checks["results"].state, "warn")
 
 
 class FiaGridInModelTest(unittest.TestCase):

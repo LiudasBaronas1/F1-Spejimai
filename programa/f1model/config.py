@@ -17,6 +17,9 @@ PRACTICE = ["FP1", "FP2", "FP3"]
 QUALI_TYPE = ["SQ", "Q"]      # spėjama pagal vieno rato greitį
 RACE_TYPE = ["S", "R"]        # spėjama pagal lenktynių tempą ir starto poziciją
 COMPETITIVE = QUALI_TYPE + RACE_TYPE
+# Sesijos būsena: ok – oficialūs F1 duomenys (FastF1); fia – preliminarus rezultatas iš FIA klasifikacijos
+# (kol F1 archyvas vėluoja; vėliau perrašomas); pending – duomenų dar nėra.
+DONE_STATUSES = ("ok", "fia")
 
 SESSION_NAMES_LT = {
     "FP1": "1 treniruotė", "FP2": "2 treniruotė", "FP3": "3 treniruotė",

@@ -73,8 +73,39 @@ label p {{ color: {MUTED} !important; text-transform: uppercase; font-weight: 70
 
 /* TOP3 kortelės */
 .f1-picks {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin-bottom: .8rem; }}
-.f1-pick {{ background: {CARD}; border-radius: 0 14px 0 0; padding: .8rem 1rem; display: flex; align-items: center;
-    gap: .9rem; border-top: 4px solid var(--team); }}
+.f1-pick-wrap {{ background: {CARD}; border-radius: 0 14px 0 0; border-top: 4px solid var(--team); }}
+.f1-pick-wrap .why {{ border-top: 1px solid {LINE}; margin: 0 1rem; padding: .45rem 0 .6rem; font-size: .86rem;
+    color: #DDDDE3; line-height: 1.4; }}
+.f1-pick-wrap .why span {{ color: {MUTED}; font-size: .7rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; margin-right: .45rem; }}
+.f1-pick {{ padding: .8rem 1rem; display: flex; align-items: center; gap: .9rem; }}
+
+/* pradžios antraštė */
+.f1-hero {{ display: flex; justify-content: space-between; align-items: flex-end; gap: 1.5rem; flex-wrap: wrap;
+    background: linear-gradient(100deg, #1F1F27 0%, #1F1F27 60%, rgba(225, 6, 0, .22) 100%);
+    border-radius: 0 18px 0 0; border-top: 4px solid {RED}; padding: 1.1rem 1.4rem; margin-bottom: .9rem; }}
+.f1-hero .kick {{ color: {RED}; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; }}
+.f1-hero .name {{ font-size: 2.1rem; font-weight: 900; font-style: italic; text-transform: uppercase; line-height: 1.1;
+    padding-right: .2em; }}
+.f1-hero .meta {{ display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }}
+.f1-hero .meta span {{ background: #15151E; border: 1px solid {LINE}; border-radius: 4px; padding: .1rem .55rem;
+    color: {MUTED}; text-transform: uppercase; font-weight: 600; font-size: .78rem; letter-spacing: .06em; }}
+.f1-hero .cd {{ text-align: right; }}
+.f1-hero .cd .k {{ color: {MUTED}; font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }}
+.f1-hero .cd .v {{ font-size: 2.4rem; font-weight: 900; font-style: italic; line-height: 1; padding-right: .1em; }}
+
+/* duomenų kontrolinis sąrašas */
+.f1-check {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .55rem; margin: .2rem 0 1rem; }}
+.f1-check > div {{ background: {CARD}; border-left: 4px solid var(--c); border-radius: 0 8px 0 0; padding: .5rem .75rem; }}
+.f1-check .k {{ display: flex; justify-content: space-between; gap: .5rem; font-weight: 700; text-transform: uppercase;
+    font-size: .78rem; letter-spacing: .05em; }}
+.f1-check .k span {{ color: var(--c); font-size: .7rem; }}
+.f1-check .d {{ color: {MUTED}; font-size: .84rem; line-height: 1.35; margin-top: .15rem; }}
+.f1-legend {{ display: flex; flex-wrap: wrap; gap: 1rem; margin: .2rem 0 .6rem; color: {MUTED}; font-size: .85rem; }}
+.f1-legend i, table.f1-states td i {{ display: inline-block; width: 14px; height: 14px; border-radius: 3px;
+    vertical-align: middle; margin-right: .35rem; }}
+table.f1-states td {{ text-align: center; padding: .3rem; }}
+table.f1-states td i {{ margin: 0; }}
 .f1-pick .pos {{ font-size: 3rem; font-weight: 900; font-style: italic; line-height: 1; min-width: 2.2rem; }}
 .f1-pick .stripe {{ width: 5px; height: 3rem; background: var(--team); border-radius: 2px; }}
 .f1-pick .code {{ font-size: 1.8rem; font-weight: 900; font-style: italic; line-height: 1; }}
@@ -186,9 +217,20 @@ table.f1-heat td.team {{ text-align: left; white-space: nowrap; padding-right: .
 /* pasirinkimo juosta virš skyrių */
 .st-key-context {{ background: {CARD}; border-radius: 0 14px 0 0; border-top: 3px solid {RED};
     padding: .7rem 1rem .9rem; margin-bottom: .6rem; }}
-/* vidiniai skirtukai (Modelis ir duomenys) – mažesni */
-.st-key-model_area button[data-baseweb="tab"] p {{ font-size: .9rem; color: {MUTED}; }}
-.st-key-model_area button[data-baseweb="tab"][aria-selected="true"] p {{ color: #fff; }}
+/* meniu kairėje */
+[data-testid="stSidebarNav"] {{ padding-top: .4rem; }}
+[data-testid="stSidebarNav"] a {{ border-radius: 0 8px 0 0; padding: .45rem .7rem; margin: .1rem 0;
+    border-left: 3px solid transparent; }}
+[data-testid="stSidebarNav"] a span {{ font-size: 1.02rem; font-weight: 700; font-style: italic; text-transform: uppercase;
+    letter-spacing: .03em; color: {MUTED}; padding-right: .2em; }}
+[data-testid="stSidebarNav"] a:hover span {{ color: #fff; }}
+[data-testid="stSidebarNav"] a[aria-current="page"] {{ background: {CARD}; border-left-color: {RED}; }}
+[data-testid="stSidebarNav"] a[aria-current="page"] span {{ color: #fff; }}
+[data-testid="stSidebarNavSeparator"] {{ border-color: {LINE}; }}
+.st-key-update_hero button {{ min-height: 3.2rem; }}
+.st-key-update_hero button p {{ white-space: normal !important; line-height: 1.2; }}
+/* sesijų pasirinkimas (segmented control) */
+.st-key-context [data-testid="stButtonGroup"] button {{ min-height: 2.4rem; }}
 
 /* eigos skydelis */
 .f1-prog {{ background: {CARD}; border-radius: 0 18px 0 0; border-top: 4px solid {RED}; padding: 1.3rem 1.5rem 1.2rem;
@@ -313,17 +355,54 @@ def weight_badge(weight, caption):
     return f'<div class="f1-w" style="--c:{color}"><b>{weight:+.2f}</b><span>{html.escape(caption)}</span></div>'
 
 
-def pick_cards(pick, table, teams, color_of, exact_label, top3_label):
-    """color_of – funkcija komanda -> spalva (žinynas „komandos“)."""
+def pick_cards(pick, table, teams, color_of, exact_label, top3_label, reasons=None, why_label=""):
+    """color_of – funkcija komanda -> spalva (žinynas „komandos“); reasons – {vairuotojas: [priežastys]}."""
     cards = []
     for i, d in enumerate(pick, 1):
         r, team = table.loc[d], teams.get(d, "")
-        cards.append(f'<div class="f1-pick" style="--team:{color_of(team)}"><div class="pos">{i}</div>'
-                     f'<div class="stripe"></div><div><div class="code">{d}</div>'
+        why = (f'<div class="why"><span>{html.escape(why_label)}</span>{html.escape(" · ".join(reasons[d]))}</div>'
+               if reasons and reasons.get(d) else "")
+        cards.append(f'<div class="f1-pick-wrap" style="--team:{color_of(team)}"><div class="f1-pick">'
+                     f'<div class="pos">{i}</div><div class="stripe"></div><div><div class="code">{d}</div>'
                      f'<div class="team">{html.escape(team)}</div></div>'
                      f'<div class="probs"><b>{r[f"P{i}"]:.0%}</b><span>{html.escape(exact_label)}</span>'
-                     f'<b>{r.TOP3:.0%}</b><span>{html.escape(top3_label)}</span></div></div>')
+                     f'<b>{r.TOP3:.0%}</b><span>{html.escape(top3_label)}</span></div></div>{why}</div>')
     _md(f'<div class="f1-picks">{"".join(cards)}</div>')
+
+
+def hero(kicker, title, meta, countdown=None, countdown_label=""):
+    """Pradžios puslapio antraštė: kas artėja, kada, ir atgalinis laikmatis."""
+    chips = "".join(f"<span>{html.escape(m)}</span>" for m in meta)
+    cd = (f'<div class="cd"><div class="k">{html.escape(countdown_label)}</div><div class="v">{html.escape(countdown)}'
+          f'</div></div>') if countdown else ""
+    _md(f'<div class="f1-hero"><div><div class="kick">{html.escape(kicker)}</div><div class="name">{html.escape(title)}'
+        f'</div><div class="meta">{chips}</div></div>{cd}</div>')
+
+
+STATE_COLOR = {"ok": "#3CCB7F", "warn": "#F5A524", "missing": RED, "na": "#55555F"}
+
+
+def checklist(items, state_labels):
+    """items – [(pavadinimas, būsena ok/warn/missing/na, paaiškinimas)]."""
+    cells = "".join(f'<div style="--c:{STATE_COLOR[s]}"><div class="k">{html.escape(k)}'
+                    f'<span>{html.escape(state_labels[s])}</span></div><div class="d">{html.escape(d)}</div></div>'
+                    for k, s, d in items)
+    _md(f'<div class="f1-check">{cells}</div>')
+
+
+def state_table(matrix, row_label, state_labels):
+    """Sezono duomenų suvestinė: etapas × sesija, langelio spalva pagal būseną."""
+    colors = {"ok": STATE_COLOR["ok"], "fia": STATE_COLOR["warn"], "missing": RED, "upcoming": "#3A3A44"}
+    head = f"<th>{html.escape(row_label)}</th>" + "".join(f"<th>{html.escape(str(c))}</th>" for c in matrix.columns)
+    rows = []
+    for rnd, r in matrix.iterrows():
+        cells = "".join(f'<td title="{html.escape(state_labels.get(v, ""))}"><i style="background:{colors[v]}"></i></td>'
+                        if isinstance(v, str) else "<td></td>" for v in r)
+        rows.append(f"<tr><td class='b'>{rnd}</td>{cells}</tr>")
+    legend = "".join(f'<span><i style="background:{colors[k]}"></i>{html.escape(state_labels[k])}</span>'
+                     for k in colors)
+    _md(f'<div class="f1-legend">{legend}</div><table class="f1-plain f1-states"><thead><tr>{head}</tr></thead>'
+        f'<tbody>{"".join(rows)}</tbody></table>')
 
 
 def probability_table(table, teams, color_of, driver_label, team_label, n=12):
@@ -354,6 +433,22 @@ def contribution_chart(contrib, driver_label, value_label, feature_label):
                  alt.Tooltip("v:Q", title=value_label, format="+.2f")],
     ).properties(height=34 * len(order))
     st.altair_chart(chart, width="stretch", height=34 * len(order) + 170)   # + ašis ir legenda
+
+
+def importance_chart(shares, value_label):
+    """shares – DataFrame (veiksnys × modelis) su dalimis 0..1; grupuotos horizontalios juostos."""
+    import altair as alt
+    long = shares.reset_index(names="f").melt("f", var_name="m", value_name="v")
+    order = list(shares.sum(axis=1).sort_values(ascending=False).index)
+    chart = alt.Chart(long).mark_bar(cornerRadiusEnd=2).encode(
+        y=alt.Y("f:N", sort=order, title=None, axis=alt.Axis(labelLimit=320, labelFontSize=13, labelFontWeight="bold")),
+        yOffset="m:N",
+        x=alt.X("v:Q", title=value_label, axis=alt.Axis(format="%")),
+        color=alt.Color("m:N", title=None, scale=alt.Scale(range=[MUTED, RED]),
+                        legend=alt.Legend(orient="top", labelFontSize=13)),
+        tooltip=[alt.Tooltip("f:N", title=""), alt.Tooltip("m:N", title=""), alt.Tooltip("v:Q", format=".0%")],
+    ).properties(height=34 * len(order))
+    st.altair_chart(chart, width="stretch")
 
 
 REASON_CLASS = {"performance": "perf", "circuit": "circ", "reliability": "rel"}

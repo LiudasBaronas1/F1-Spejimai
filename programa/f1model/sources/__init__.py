@@ -64,13 +64,13 @@ def get_json(url, params=None, tries=6, **kw):
 
 def registry(db, ref):
     """Visi šaltiniai, atnaujinimo tvarka (orai – po rezultatų, lažybos – pabaigoje)."""
-    from .fia import GridSource, UpgradeSource
+    from .fia import ClassificationSource, GridSource, UpgradeSource
     from .news import NewsSource
     from .odds import BookmakerSource, KalshiSource, PolymarketSource
     from .official import OfficialSource
     from .track_maps import TrackMapSource
     from .weather import TrackWeatherSource, WeatherSource
-    return [cls(db, ref) for cls in (OfficialSource, TrackMapSource, TrackWeatherSource, WeatherSource, UpgradeSource,
+    return [cls(db, ref) for cls in (OfficialSource, ClassificationSource, TrackMapSource, TrackWeatherSource, WeatherSource, UpgradeSource,
                                      GridSource, BookmakerSource, KalshiSource, PolymarketSource, NewsSource)]
 
 

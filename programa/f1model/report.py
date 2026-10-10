@@ -29,7 +29,7 @@ def write(path, data, fitted, last=None):
     sq, sr = model.importance(eq), model.importance(er)
     L = ["# Modelio parametrai", "",
          f"*Atnaujinta automatiškai {datetime.now():%Y-%m-%d %H:%M}. Šio failo keisti nereikia – keičiami "
-         "parametrai yra `parametrai.json`, o žinynai (trasos, komandos, žaidėjai) – programos skyriuje „Modelis ir duomenys“ → „Duomenys“.*", "",
+         "parametrai yra `parametrai.json`, o žinynai (trasos, komandos, žaidėjai) – programos meniu „Duomenys“ → „Žinynai“.*", "",
          "## 1. Požymiai ir jų svoriai", "",
          "Požymiai standartizuoti (vidutinis vairuotojas = 0, geresnis = teigiamas), todėl svorius galima "
          "lyginti tarpusavyje. **Svarba** – kokią dalį sprendimo lemia požymis. **Daugiklis** – rankinis "
