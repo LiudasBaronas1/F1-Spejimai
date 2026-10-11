@@ -44,9 +44,7 @@ def reference_tables(c):
     e1, e2, _ = st.columns([1, 1, 3])
     if e1.button(t("data.save"), type="primary", width="stretch"):
         c.save_reference(table, edited.dropna(subset=[edited.columns[0]]).to_dict("records"))
-        st.cache_resource.clear()
         st.rerun()
     if e2.button(t("data.defaults"), width="stretch"):
         c.save_reference(table, c.default_reference_rows(table))
-        st.cache_resource.clear()
         st.rerun()

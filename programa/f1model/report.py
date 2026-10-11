@@ -24,9 +24,10 @@ def write(path, data, fitted, last=None, calibration=None):
     """path – PARAMETRAI.md; fitted = model.fit_all(data); last = (GP, sesija, spėjimas, trasa);
     calibration – orų kalibravimo santrauka (weather.calibration_summary)."""
     S, tracks = data.settings, data.ref.tracks
-    (wq, nq), (wr, nr) = fitted["quali"], fitted["race"]
-    eq, er = model.effective_weights(wq, S), model.effective_weights(wr, S)
+    q, r = fitted["quali"], fitted["race"]
+    eq, er = q.effective(S), r.effective(S)
     sq, sr = model.importance(eq), model.importance(er)
+    active = [features.REGISTRY[f] for f in S.active(features.names())]
     L = ["# Modelio parametrai", "",
          f"*Atnaujinta automatiškai {datetime.now():%Y-%m-%d %H:%M}. Šio failo keisti nereikia – keičiami "
          "parametrai yra `parametrai.json`, o žinynai (trasos, komandos, žaidėjai) – programos meniu „Duomenys“ → „Žinynai“.*", "",
@@ -38,8 +39,12 @@ def write(path, data, fitted, last=None, calibration=None):
                  "Daugiklis"],
                 [(f"**{f.label}** (`{f.name}`)", f.description, f"{eq[f.name]:+.2f}", f"{sq[f.name]:.0%}",
                   f"{er[f.name]:+.2f}", f"{sr[f.name]:.0%}", f"{S.multiplier(f.name):g}")
-                 for f in features.REGISTRY.values()])
-    L += ["", f"Svoriai išmokti iš {nq} kvalifikacijų ir {nr} lenktynių/sprintų ({S.train_seasons}).", "",
+                 for f in active])
+    if S.disabled:
+        L += ["", "Išjungti požymiai (`isjungti_pozymiai`): " + ", ".join(f"`{f}`" for f in S.disabled) + "."]
+    L += ["", f"Svoriai išmokti iš {q.n_samples} kvalifikacijų ir {r.n_samples} lenktynių/sprintų ({S.train_seasons}). "
+          f"Sprinto sesijose stiprumų skirtumai ×{q.sprint:.2f} (sprinto kvalifikacija) ir ×{r.sprint:.2f} (sprintas) – "
+          f"išmokta iš duomenų; lyjant ×(1 − {S.wet_chaos:g} · lietus).", "",
           "## 2. Nustatymai (`parametrai.json`)", ""]
     L += _table(["Raktas", "Reikšmė"], [(f"`{k}`", getattr(S, a)) for k, a in EDITABLE.items()])
     L += ["", "## 3. Duomenys ir taisyklės", "",
@@ -49,7 +54,12 @@ def write(path, data, fitted, last=None, calibration=None):
           "ar trasoje iš tikrųjų lijo." + _calibration_text(calibration),
           f"- **Lažybų rinkos**: Kalshi, Polymarket (svoriai `lazybu_saltiniu_svoriai`), lažybininkai – atsarginis; "
           f"paskutinė kaina prieš sesiją, min. apyvarta {odds.MIN_VOLUME_USD} $.",
-          "- **Taškų optimizavimas**: tikėtini taškai = P(TOP3) + P(tiksli vieta); perrenkami visi trejetai.", "",
+          "- **Gedimai**: lenktynėms ir sprintams kiekvienam vairuotojui skaičiuojama tikimybė nefinišuoti "
+          f"(vairuotojo ir komandos {S.dnf_seasons} sez. gedimų dažnis, sutrauktas link vidurkio, svoris "
+          f"{S.dnf_shrink:g}); simuliacijoje toks vairuotojas į vietas nepatenka.",
+          "- **Taškų optimizavimas**: tikėtini taškai = P(TOP3) + P(tiksli vieta); perrenkami visi trejetai.",
+          "- **Vertinimas**: `cli.py testas` (taškai, vietų log-loss, TOP3 Brier) ir `cli.py palyginti` "
+          "(porinis bootstrap – ar pakeitimas tikrai geresnis, ne atsitiktinumas).", "",
           "## 4. Trasų charakteristikos (žinynas „trasos“)", ""]
     L += _table(["Trasa", "Greitis", "Prispaudimas", "Gatvė", "Padangos", "Lenkimo sunkumas"],
                 [(c, *(f"{v:g}" for v in p), f"{tracks.overtaking(c):g}") for c, p in sorted(tracks.profiles.items())])
@@ -58,8 +68,8 @@ def write(path, data, fitted, last=None, calibration=None):
         L += ["", f"## 5. Paskutinis spėjimas: {name} – {SESSION_NAMES_LT[session]}", "",
               f"Lietus **{out['rain']:.0%}**, trasa **{circ}**, panašiausios: "
               + ", ".join(f"{c} ({s:.0%})" for c, s in tracks.most_similar(circ, 5)) + ".", ""]
-        L += _table(["Vairuotojas", "P1", "P2", "P3", "TOP3"] + [f.label for f in features.REGISTRY.values()],
-                    [(d, *(f"{r[c]:.0%}" for c in ("P1", "P2", "P3", "TOP3")),
-                      *(f"{r[f]:+.1f}" for f in features.names())) for d, r in out["table"].head(12).iterrows()])
+        L += _table(["Vairuotojas", "P1", "P2", "P3", "TOP3", "Nefinišuos"] + [f.label for f in active],
+                    [(d, *(f"{row[c]:.0%}" for c in ("P1", "P2", "P3", "TOP3", "DNF")),
+                      *(f"{row[f.name]:+.1f}" for f in active)) for d, row in out["table"].head(12).iterrows()])
         L += ["", f"Siūlomas spėjimas: **{' – '.join(out['pick'])}**, tikėtini taškai {out['expected']:.2f}."]
     path.write_text("\n".join(L) + "\n", encoding="utf-8")

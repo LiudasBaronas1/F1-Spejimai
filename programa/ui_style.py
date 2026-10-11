@@ -108,14 +108,16 @@ def state_table(matrix, row_label, state_labels):
         f'<tbody>{"".join(rows)}</tbody></table>')
 
 
-def probability_table(table, teams, color_of, driver_label, team_label, n=12):
-    """Tikimybių lentelė kaip F1 rezultatų lentelė."""
-    head = "".join(f"<th>{html.escape(h)}</th>" for h in ["", driver_label, team_label, "P1", "P2", "P3", "TOP3"])
+def probability_table(table, teams, color_of, driver_label, team_label, dnf_label=None, n=12):
+    """Tikimybių lentelė kaip F1 rezultatų lentelė. dnf_label – rodyti ir nefinišavimo tikimybę (lenktynėms)."""
+    cols = ["P1", "P2", "P3", "TOP3"] + (["DNF"] if dnf_label and "DNF" in table and table.DNF.max() > 0 else [])
+    head = "".join(f"<th>{html.escape(h)}</th>" for h in ["", driver_label, team_label, *cols[:4]]
+                   + ([dnf_label] if len(cols) > 4 else []))
     rows = []
     for k, (d, r) in enumerate(table.head(n).iterrows(), 1):
         team = teams.get(d, "")
         bars = "".join(f'<td class="bar" style="--w:{r[c] * 100:.0f}%;--c:{RED if c == "TOP3" else MUTED}">'
-                       f'<i></i><span>{r[c]:.0%}</span></td>' for c in ("P1", "P2", "P3", "TOP3"))
+                       f'<i></i><span>{r[c]:.0%}</span></td>' for c in cols)
         rows.append(f'<tr style="--team:{color_of(team)}"><td class="rank">{k}</td><td class="drv">{d}</td>'
                     f'<td class="team">{html.escape(team)}</td>{bars}</tr>')
     _md(f'<table class="f1-table"><thead><tr>{head}</tr></thead><tbody>{"".join(rows)}</tbody></table>')
@@ -285,10 +287,6 @@ def progress_html(title, frac, subtitle, steps, now=None, now_label=""):
             f'<div class="sub">{e(subtitle)}</div></div><div class="pct">{pct:.0%}</div></div>'
             f'<div class="bar big"><i style="width:{pct * 100:.1f}%"></i></div>{current}'
             f'<div class="steps">{rows}</div></div>')
-
-
-def side_brand(accent):
-    _md(f'<div class="f1-side-brand">F1 <span>{html.escape(accent)}</span></div>')
 
 
 def side_info(title, text):

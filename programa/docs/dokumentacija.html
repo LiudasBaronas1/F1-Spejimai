@@ -61,7 +61,7 @@ code { background: #F0F0F2; padding: 1px 4px; font-size: 9.5pt; }
   <li>Kaip modelis spėja – paprastai</li>
   <li>Iš kur imami duomenys</li>
   <li>Kiek modelis tikslus</li>
-  <li>Automatinis spėjimas prieš sesiją</li>
+  <li>Automatinis atnaujinimas ir spėjimas</li>
   <li>Dažni klausimai</li>
   <li>Techninė dalis (programuotojui)</li>
 </ol>
@@ -89,7 +89,8 @@ Baudos, skirtos jau po finišo, neįskaičiuojamos – taip, kaip numato mūsų 
       Pirmą kartą programa pati įdiegs, ko reikia (Python, jei jo nėra, ir bibliotekas; 2–5 min., reikia interneto)
       ir sukurs darbalaukio nuorodą <b>„F1 Spejimai“</b> – vėliau paleiskite per ją. Atsidarys atskiras langas.</li>
   <li><b>Atsidarys „Artimiausia sesija“.</b> Viršuje matysite, kokia sesija artėja ir po kiek laiko ji prasidės.</li>
-  <li><b>Paspauskite „Atnaujinti duomenis“.</b> Programa parsisiųs naujausius rezultatus, treniruotes, orų prognozę,
+  <li><b>Duomenys atsinaujina patys.</b> Kol programa veikia, ji pati atnaujina duomenis ir persimoko (žr. skyrių 7),
+      todėl atsidarius spėjimas jau būna paruoštas. Norint atnaujinti iškart – <b>„Atnaujinti duomenis“</b>. Programa parsisiųs naujausius rezultatus, treniruotes, orų prognozę,
       lažybų rinkų kainas, FIA dokumentus ir naujienas (apie 1–2 minutes). Eigos skydelis rodo, kiek procentų atlikta,
       kiek dar liks laukti (pagal tai, kiek kiekvienas šaltinis užtruko ankstesniais kartais), ką būtent programa dabar
       siunčiasi (pvz. „Regiono orų prognozė – 2026 R18, 18 iš 23“) ir kiekvieno šaltinio būseną su laiku.
@@ -110,8 +111,8 @@ atsidarys akimirksniu.</p>
 
 <section>
 <h2>3. Programos langas</h2>
-<p>Kairėje – meniu pagal tai, ką norite daryti. Po juo – mygtukas „Atnaujinti duomenis“, paskutinio atnaujinimo laikas ir
-kalba.</p>
+<p>Kairėje – meniu pagal tai, ką norite daryti. Po juo – mygtukas „Atnaujinti duomenis“, paskutinio ir kito automatinio
+atnaujinimo laikas, automatinio atnaujinimo nustatymai ir kalba.</p>
 <table>
   <tr><th style="width:24%">Meniu punktas</th><th>Kam skirtas</th></tr>
   <tr><td>Artimiausia sesija</td><td>Atsidaro pirmas. Kas artėja ir po kiek laiko, ar surinkti visi reikalingi duomenys,
@@ -164,7 +165,9 @@ suteikia tam tikrą svarbą ir tada daug kartų „mintyse perleidžia“ sesij�
       (2024–2026 m. sesijų): kurie faktai praeityje geriausiai nuspėjo, kas pateks į TOP3.</li>
   <li><b>Apskaičiuoja vairuotojo „stiprumą“</b> – faktų ir jų svorių sumą.</li>
   <li><b>20 000 kartų „perleidžia“ sesiją</b> kompiuteryje: stipresnis vairuotojas dažniau laimi, bet dalyvauja ir atsitiktinumas
-      (klaidos, gedimai, strategijos). Lyjant atsitiktinumo daugiau. Taip gaunamos tikimybės P1, P2, P3.</li>
+      (klaidos, strategijos). Lyjant atsitiktinumo daugiau, o sprinte – tiek, kiek modelis išmoko iš ankstesnių sprintų.
+      Lenktynėse ir sprintuose kiekvienas vairuotojas gali ir <b>nefinišuoti</b> (gedimas, avarija) – su tikimybe, apskaičiuota
+      pagal jo ir jo komandos pastarųjų dviejų sezonų gedimų dažnį. Taip gaunamos tikimybės P1, P2, P3.</li>
   <li><b>Parenka geriausią trejetą</b> pagal mūsų taškų sistemą: perrenkami visi trejetai ir imamas tas,
       kuris vidutiniškai atneša daugiausiai taškų.</li>
 </ol>
@@ -180,6 +183,8 @@ suteikia tam tikrą svarbą ir tada daug kartų „mintyse perleidžia“ sesij�
   <tr><td>Trasos istorija ir panašios trasos</td><td>Kaip vairuotojui sekasi šioje ir panašiose trasose.</td></tr>
   <tr><td>Lietus ir temperatūra</td><td>Kaip vairuotojui sekasi lyjant / karštyje, padauginta iš orų prognozės.</td></tr>
   <tr><td>Strategija</td><td>Padangų dėvėjimasis ilgose serijose ir kaip sunku trasoje aplenkti.</td></tr>
+  <tr><td>Gedimų tikimybė</td><td>Lenktynėms ir sprintams: kaip dažnai vairuotojas ir jo komanda nefinišuodavo (rodoma
+      tikimybių lentelės stulpelyje „Nefinišuos“).</td></tr>
 </table>
 <div class="box"><b class="t">Pavyzdys</b>2026 m. Kuala Lumpuro lenktynės: VER startuoja iš pole pozicijos, lažybų rinka jam
 duoda 57 % laimėti. Modelis apskaičiuoja: VER P1 – 35 %, TOP3 – 78 %. Siūlomas spėjimas VER – HAM – ANT
@@ -232,21 +237,36 @@ kainos yra tik dalies vairuotojų, tikimybės nebedidinamos dirbtinai (anksčiau
 <section>
 <h2>6. Kiek modelis tikslus</h2>
 <p>Modelis tikrinamas sąžiningai: kiekvienai praeities sesijai jis spėja <b>tik su tais duomenimis, kurie buvo žinomi prieš ją</b>,
-ir rezultatas palyginamas su tikru. 2026 m. sezone (iki Singapūro kvalifikacijos, 45 sesijos) modelis surinko <b>130 taškų</b> –
+ir rezultatas palyginamas su tikru. Orai imami tokie, kokie buvo <b>prognozuoti</b> prieš sesiją, o lažybų kainos – tik tos,
+kurios žinomos prieš jos pradžią. 2026 m. sezone (iki Singapūro kvalifikacijos, 45 sesijos) modelis surinko <b>132 taškus</b> –
 daugiau nei bet kuris mūsų totalizatoriaus žaidėjas.</p>
-<p>2025–2026 m. (104 sesijos) modelis vidutiniškai surenka <b>apie 3 taškus iš 6</b> per sesiją. Tiksliai atspėti visą TOP3
+<p>2025–2026 m. (105 sesijos) modelis surinko <b>319 taškų – vidutiniškai 3,04 iš 6</b> per sesiją (prieš gedimų tikimybę
+ir sprinto daugiklį – 314). Tiksliai atspėti visą TOP3
 pavyksta retai: net lažybų rinkos favoritas laimi tik apie 45 % sesijų. Reali viršutinė riba – maždaug 3,2–3,4 taško per
 sesiją, nes F1 rezultatams didelę įtaką daro atsitiktinumas (avarijos, gedimai, saugos automobilis, lietus).</p>
 <h3>Kas išbandyta ir atmesta</h3>
-<p>Kiekvienas pakeitimas patikrinamas su visomis sesijomis ir paliekamas tik jei pagerina rezultatą. Atmesta: didesnis
-lažybų rinkos svoris, „idealaus rato“ ir kvalifikacijos simuliacijos rodikliai, atskiras P2/P3 atsitiktinumas,
+<p>Kiekvienas pakeitimas patikrinamas su visomis sesijomis ir paliekamas tik jei pagerina rezultatą. Be taškų žiūrima ir
+į tikimybių tikslumą (vietų log-loss) – jis daug mažiau priklauso nuo atsitiktinumo, todėl pagal jį patikimiau matyti, ar
+pakeitimas tikrai padeda. Atmesta: didesnis lažybų rinkos svoris, „idealaus rato“ ir kvalifikacijos simuliacijos rodikliai,
+atskiras P2/P3 atsitiktinumas, komandos forma, lietaus atsitiktinumo mokymasis iš duomenų, mokymasis tik iš finišavusių,
 <b>bolidų atnaujinimų skaičius</b> (2025–2026 m. 296 tšk. vs 300 be jo – atnaujinimai rodomi tik kaip informacija;
 jų poveikį lažybų rinka ir treniruočių tempas jau atspindi).</p>
 </section>
 
 <section>
-<h2>7. Automatinis spėjimas prieš sesiją</h2>
-<p>Įjungus automatinį režimą, kompiuteris kas 15 minučių patikrina, ar artėja sesija. Likus ~40 minučių iki sesijos jis
+<h2>7. Automatinis atnaujinimas ir spėjimas</h2>
+<p><b>Kol programa veikia</b> (net jei langas uždarytas), ji pati atnaujina duomenis ir iškart persimoko, todėl atsidarius
+viskas jau paruošta:</p>
+<ul>
+  <li>tarp etapų – kas 3 val.;</li>
+  <li>lenktynių savaitgalį (nuo paros prieš pirmą sesiją iki 4 val. po paskutinės) – kas 20 min.;</li>
+  <li>papildomai – kai turėtų pasirodyti įvykusios sesijos rezultatai, ir likus 45 min. iki kiekvienos spėjamos sesijos
+      (naujausios lažybų kainos, orai, starto rikiuotė).</li>
+</ul>
+<p>Intervalus galima keisti arba automatinį atnaujinimą išjungti kairiajame meniu („Automatinis atnaujinimas“). Ten pat
+matyti, kada bus kitas atnaujinimas. Jei atnaujinimas nepavyksta (pvz. nėra interneto), kitas bandymas – po 10 min.</p>
+<h3>Windows pranešimas prieš sesiją</h3>
+<p>Įjungus šį režimą, kompiuteris kas 15 minučių patikrina, ar artėja sesija. Likus ~40 minučių iki sesijos jis
 pats atnaujina duomenis, paruošia spėjimą ir parodo <b>Windows pranešimą</b>, pvz.:</p>
 <div class="box">F1: Bahrain – Lenktynės<br>VER – HAM – ANT (tikėtini taškai 2.4, lietus 98 %, pradžia 10:00)</div>
 <p>Įjungti: aplanke <code>programa</code> dukart spustelėkite <code>automatinis_ijungti.bat</code>.
@@ -294,7 +314,12 @@ Išjungti: <code>automatinis_isjungti.bat</code>. Veikia tik kai kompiuteris įj
   <tr><td>config.py</td><td>Konstantos: keliai, sesijų tipai ir trukmės (iš jų – kada laukti duomenų ir orų langas).</td></tr>
   <tr><td>features.py</td><td>Požymių registras: kiekvienas veiksnys – funkcija su <code>@feature</code>. Naujas veiksnys
       pridedamas viena funkcija.</td></tr>
-  <tr><td>model.py</td><td>Plackett-Luce modelis: svorių mokymas, simuliacija, geriausias trejetas.</td></tr>
+  <tr><td>model.py</td><td>Plackett-Luce modelis: svorių ir sprinto daugiklio mokymas (<code>KindModel</code>), simuliacija
+      su gedimų tikimybe, geriausias trejetas.</td></tr>
+  <tr><td>backtest.py</td><td>Sezono atkūrimas: taškai ir tikimybių tikslumo matai (log-loss, Brier); porinis bootstrap
+      dviejų modelio variantų palyginimui.</td></tr>
+  <tr><td>scheduler.py</td><td>Automatinio atnaujinimo grafikas (<code>AutoUpdatePolicy</code>): kada atnaujinti. Be tinklo
+      ir sąsajos, todėl lengvai testuojamas.</td></tr>
   <tr><td>sources/</td><td>Duomenų šaltiniai (DataSource klasės): oficialūs duomenys, trasų žemėlapiai, orai, lažybos,
       FIA dokumentai (<code>fia.py</code>: atnaujinimai, starto rikiuotė ir klasifikacija iš PDF), naujienos
       (<code>news.py</code>, RSS). Priklausomybes (bendrą FIA rodyklę, talpyklos aplanką, kalibravimo failą) perduoda
@@ -307,8 +332,10 @@ Išjungti: <code>automatinis_isjungti.bat</code>. Veikia tik kai kompiuteris įj
       <code>vertimai</code>), <code>Translator</code> (tekstas pagal raktą, trūkstami – lietuviškai), pradiniai tekstai.
       Paleidžiant įrašomi tik trūkstami raktai, todėl programoje pataisyti tekstai išlieka.</td></tr>
   <tr><td>preferences.py</td><td>Programos pasirinkimai (pvz. kalba), DB lentelė <code>nustatymai</code>.</td></tr>
-  <tr><td>ui.py</td><td>Sąsajos įėjimas: sukuria App, vertėją ir <code>Controller</code> (atnaujinimas ir mokymas
-      foniniame sraute su eigos skydeliu), perduoda puslapiams <code>Ctx</code>.</td></tr>
+  <tr><td>ui_jobs.py</td><td>Foniniai darbai, bendri visiems langams: <code>Jobs</code> (atnaujinimas, mokymas, apmokyti
+      modeliai) ir <code>AutoUpdater</code> (srautas, kuris pagal grafiką atnaujina duomenis ir persimoko).</td></tr>
+  <tr><td>ui.py</td><td>Sąsajos įėjimas: sukuria App, foninius darbus, vertėją ir <code>Controller</code> (rodo darbų
+      eigą), perduoda puslapiams <code>Ctx</code>.</td></tr>
   <tr><td>views/</td><td>Puslapiai – po modulį kiekvienam meniu punktui (<code>render(c)</code>) ir bendros dalys
       (<code>common.py</code>). Puslapiai programą pasiekia tik per siaurą <code>Ctx</code> sąsają.</td></tr>
   <tr><td>ui_progress.py, ui_style.py, ui.css</td><td>Eigos skydelis; vaizdo komponentai ir stilius (be tekstų ir be
@@ -323,8 +350,12 @@ Išjungti: <code>automatinis_isjungti.bat</code>. Veikia tik kai kompiuteris įj
 <p>Naujas tekstas: raktas su vertimais į <code>translations.py</code> ir <code>t("raktas")</code> sąsajoje. Nauja kalba:
 eilutė žinyne „Kalbos“ ir vertimai žinyne „Vertimai“ (arba <code>translations.py</code>); kodo keisti nereikia.</p>
 <h3>Taisyklė keičiant modelį</h3>
-<p>Po kiekvieno pakeitimo: paleisti <code>testai.bat</code>, atlikti sezono testą ir palyginti modelio taškus su ankstesniu rezultatu;
-pakeitimas paliekamas tik jei modelis neblogėja. Po pakeitimų atnaujinti šią dokumentaciją:
+<p>Po kiekvieno pakeitimo: paleisti <code>testai.bat</code> ir sezono testą (<code>cli.py testas 2025 2026</code>).
+Ar pakeitimas tikrai pagerina modelį, tikrinama <code>cli.py palyginti</code>, pvz.
+<code>cli.py palyginti forma_pusejimo_sesijos=5</code> arba <code>cli.py palyginti --be market_top5</code>: abu variantai
+spėja tas pačias 2025–2026 m. sesijas, o porinis bootstrap parodo, kiek procentų atsitiktinių sesijų rinkinių naujas
+variantas geresnis. Sprendžiama pagal vietų log-loss (stabilesnis nei taškai); keisti verta, jei geresnis ≥ 95 % atvejų
+ir taškai nemažėja. Po pakeitimų atnaujinti šią dokumentaciją:
 <code>.venv\Scripts\python docs\build_pdf.py</code>.</p>
 </section>
 

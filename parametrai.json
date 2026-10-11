@@ -29,7 +29,9 @@
     ],
     "reguliarizacija": 0.1,
     "simuliaciju_skaicius": 20000,
-    "be_reguliarizacijos": [],
+    "isjungti_pozymiai": [],
+    "gedimu_sezonai": 2,
+    "gedimu_istorijos_svoris": 20.0,
     "kvalifikacijos_tempo_matai": [
       "best_lap_s"
     ],

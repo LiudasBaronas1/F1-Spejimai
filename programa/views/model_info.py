@@ -10,12 +10,12 @@ from f1model.i18n import DEFAULT_LANGUAGE
 def render(c):
     t = c.t
     tabs = st.tabs([t("model.tab_how"), t("model.tab_factors"), t("model.tab_params")])
-    (w_q, n_q), (w_r, n_r) = c.fitted["quali"], c.fitted["race"]
-    shares = [model.importance(model.effective_weights(w, c.S)) for w in (w_q, w_r)]
+    q, r = c.fitted["quali"], c.fitted["race"]
+    shares = [model.importance(m.effective(c.S)) for m in (q, r)]
     with tabs[0]:
-        how_it_works(c, shares, n_q, n_r)
+        how_it_works(c, shares, q, r)
     with tabs[1]:
-        factors(c, (w_q, w_r), shares)
+        factors(c, (q.weights, r.weights), shares)
     with tabs[2]:
         if t.lang != DEFAULT_LANGUAGE:
             st.caption(t("params.language_note"))
@@ -23,14 +23,18 @@ def render(c):
         st.markdown(c.report_text(refresh))
 
 
-def how_it_works(c, shares, n_q, n_r):
+def how_it_works(c, shares, q, r):
     t = c.t
-    for i in range(1, 6):
-        ui.note(f"{i}.", t(f"model.how.{i}"), color=ui.RED)
-    ui.section(t("model.importance"), t("model.importance_sub", q=n_q, r=n_r))
+    for i in range(1, 7):
+        ui.note(f"{i}.", t(f"model.step.{i}"), color=ui.RED)
+    ui.section(t("model.importance"), t("model.importance_sub", q=q.n_samples, r=r.n_samples))
+    active = c.S.active(features.names())
     ui.importance_chart(pd.DataFrame({t("features.col.quali"): shares[0], t("features.col.race"): shares[1]})
-                        .rename(index=c.labels), t("model.share"))
-    st.caption(t("model.accuracy"))
+                        .loc[active].rename(index=c.labels), t("model.share"))
+    ui.tiles([(t("model.sprint_q"), f"×{q.sprint:.2f}", t("model.sprint_sub")),
+              (t("model.sprint_r"), f"×{r.sprint:.2f}", t("model.sprint_sub")),
+              (t("model.chaos"), f"{c.S.wet_chaos:.2f}", t("model.chaos_sub"))])
+    st.caption(t("model.accuracy_note"))
 
 
 def factors(c, weights, shares):
@@ -47,7 +51,7 @@ def factors(c, weights, shares):
     widths = [2.5, 5, 1.4, 1.4, 2.5]
     for col, key in zip(st.columns(widths), ["feature", "meaning", "quali", "race", "multiplier"]):
         col.markdown(f"**{t(f'features.col.{key}')}**")
-    for f in features.REGISTRY.values():
+    for f in (features.REGISTRY[n] for n in S.active(features.names())):
         cols = st.columns(widths, vertical_alignment="center")
         cols[0].markdown(f"**{c.labels[f.name]}**  \n`{f.name}`")
         cols[1].caption(t.get(f"feature.{f.name}.desc", f.description))

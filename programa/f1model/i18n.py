@@ -18,10 +18,15 @@ class TranslationRepository:
         self.db = db
 
     def seed(self, languages, texts):
-        """languages – {kodas: pavadinimas}; texts – {raktas: {kalba: tekstas}}. Įrašo tik tai, ko DB dar nėra."""
+        """languages – {kodas: pavadinimas}; texts – {raktas: {kalba: tekstas}}. Įrašo tik tai, ko DB dar nėra,
+        ir pašalina raktus, kurių programa nebenaudoja."""
         have_lang = set(self.languages())
         self.db.write("kalbos", [dict(kodas=k, pavadinimas=n) for k, n in languages.items() if k not in have_lang])
         have = set(map(tuple, self.db.query("SELECT raktas, kalba FROM vertimai").values))
+        obsolete = {key for key, _ in have} - set(texts)
+        if obsolete:
+            with self.db.connect() as con:
+                con.executemany("DELETE FROM vertimai WHERE raktas = ?", [(k,) for k in obsolete])
         self.db.write("vertimai", [dict(raktas=key, kalba=lang, tekstas=text)
                                    for key, by_lang in texts.items() for lang, text in by_lang.items()
                                    if (key, lang) not in have])

@@ -66,6 +66,11 @@ class Context:
 
     @cached_property
     def rain(self):
+        """Lietaus tikimybė, kokia žinoma spėjimo metu: spėjant „iš praeities“ (before) – prognozė, ne faktas."""
+        if self.before is not None:
+            fc = self._target_value("rain_prob_fc", np.nan)
+            if not np.isnan(fc):
+                return fc
         return self._target_value("rain_prob", 0.0)
 
     @cached_property
@@ -96,7 +101,15 @@ class Context:
     def odds(self):
         O = self.data.odds
         O = O[(O.season == self.season) & (O["round"] == self.rnd) & (O.session == self.session)]
-        return O[O.price_ts.isna() | (O.price_ts <= self.t0)] if self.before is not None and not O.empty else O
+        return O[O.price_ts.notna() & (O.price_ts <= self.t0)] if self.before is not None and not O.empty else O
+
+    @cached_property
+    def current_teams(self):
+        """{vairuotojas: komanda} – paskutinė žinoma iki sesijos (šio savaitgalio treniruotės arba rezultatai)."""
+        r = self.data.res[(self.data.res.season == self.season) & (self.data.res.date_utc < self.t0)]
+        teams = dict(zip(*r.sort_values("date_utc")[["driver", "team"]].values.T)) if not r.empty else {}
+        wp, _ = self.practice
+        return {**teams, **dict(zip(wp.driver, wp.team))}
 
     def residuals(self, frame, group):
         """Vietos nuokrypis nuo vairuotojo vidurkio grupėje (teigiamas = geriau nei įprastai)."""
@@ -197,7 +210,7 @@ def form(ctx):
     return _fill_min(f.reindex(ctx.drivers))
 
 
-@feature("prev_season", "Praėjęs sezonas", "pr.sez", 0.3,
+@feature("prev_season","Praėjęs sezonas", "pr.sez", 0.3,
          "Vairuotojo vidutinė vieta praėjusiame sezone to paties tipo sesijose.")
 def prev_season(ctx):
     K = ctx.kind_results
@@ -317,8 +330,12 @@ def overtake(ctx):
     return weekend(ctx) if _is_race(ctx) else ctx.nan()
 
 
-# Išbandyta ir atmesta (2026-10): „Bolido atnaujinimai“ (FIA Car Presentation, našumo detalių skaičius šiame
-# etape arba per 3 etapus) – 2025–2026 m. 296/295 tšk. vs 300 be jo. Atnaujinimai rodomi tik kaip informacija.
+# Išbandyta ir atmesta (2026-10, `cli.py palyginti`, 2025–2026 m., porinis bootstrap):
+# - „Bolido atnaujinimai“ (FIA Car Presentation, našumo detalių sk.) – log-loss ir taškai blogesni;
+#   atnaujinimai rodomi tik kaip informacija.
+# - „Komandos forma“ (abiejų vairuotojų vidurkis) – log-loss blogesnis (geresnis tik 4 % imčių).
+# - Kvalifikacijos tempas pagal idealų ratą / kvalifikacijos simuliaciją – nepagerino / pablogino.
+# - Rinkos tikimybė be standartizavimo – tikslesnės tikimybės, bet 5 tšk. mažiau (atmesta dėl taškų).
 
 MARKET_FOR = {"Q": "pole", "SQ": "pole", "R": "win", "S": "win"}
 
@@ -343,6 +360,31 @@ def market_top5(ctx):
     return _market(ctx, "top5", _logit)
 
 
+# ------------------------------------------------------------------ gedimų tikimybė
+
+def dnf_probability(ctx):
+    """Lenktynėms/sprintui: tikimybė, kad vairuotojas nefinišuos (gedimas, avarija). Vairuotojo ir jo komandos
+    pastarųjų sezonų tos pačios sesijos (R arba S) gedimų dažnis, sutrauktas link bendro vidurkio."""
+    if not _is_race(ctx):
+        return pd.Series(0.0, index=ctx.drivers)
+    r = ctx.data.res
+    H = r[(r.session == ctx.session) & (r.date_utc < ctx.t0) & (r.season > ctx.season - ctx.S.dnf_seasons)]
+    if H.empty:
+        return pd.Series(0.0, index=ctx.drivers)
+    base, m = H.dnf.mean(), ctx.S.dnf_shrink
+    key = lambda team: ctx.data.ref.team_key(team) or team
+    by_driver = H.groupby("driver").dnf.agg(["sum", "count"])
+    by_team = H.assign(k=H.team.map(key)).groupby("k").dnf.agg(["sum", "count"])
+    zero = pd.Series({"sum": 0.0, "count": 0.0})
+    q = {}
+    for d in ctx.drivers:
+        a = by_driver.loc[d] if d in by_driver.index else zero
+        t = key(ctx.current_teams.get(d))
+        b = by_team.loc[t] if t in by_team.index else zero
+        q[d] = (a["sum"] + b["sum"] / 2 + m * base) / (a["count"] + b["count"] / 2 + m)
+    return pd.Series(q).clip(0.0, 0.5)
+
+
 # ------------------------------------------------------------------ požymių matrica
 
 def build(data, season, rnd, session, before=None):
@@ -357,6 +399,6 @@ def build(data, season, rnd, session, before=None):
         if f.scale:
             X[f.name] = X[f.name] * f.scale(ctx)
     X.index.name = "driver"
-    X.attrs.update(raw=raw, rain=ctx.rain, temp=ctx.temp)
+    X.attrs.update(raw=raw, rain=ctx.rain, temp=ctx.temp, dnf=dnf_probability(ctx).reindex(ctx.drivers).fillna(0.0))
     data.cache[key] = X
     return X

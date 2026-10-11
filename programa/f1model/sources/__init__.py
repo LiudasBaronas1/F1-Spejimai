@@ -41,15 +41,6 @@ class Progress:
     detail: str = ""
     error: Exception = None
 
-    @property
-    def source_frac(self):
-        i, n = self.step
-        return 1.0 if self.status != "running" else (min(1.0, i / n) if n else 0.0)
-
-    @property
-    def frac(self):
-        return (self.index + self.source_frac) / self.total if self.total else 1.0
-
 
 def get_json(url, params=None, tries=6, **kw):
     """HTTP GET su pakartojimu, kai serveris praneša apie užklausų limitą (429) ar laikiną sutrikimą (5xx)."""

@@ -8,6 +8,7 @@ from functools import cached_property
 from typing import Callable
 
 from f1model import backtest, features, model, status
+from f1model.dataset import kind_of
 
 
 @dataclass
@@ -15,8 +16,8 @@ class Ctx:
     app: object                       # f1model.app.App (naudojamas tik šios klasės metoduose)
     t: object                         # Translator
     data: object                      # Dataset
-    fitted: dict                      # {"quali"/"race": (svoriai, imčių sk.)}
-    weights_before: Callable          # (rūšis, iki) -> svoriai; mokant rodomas eigos skydelis
+    fitted: dict                      # {"quali"/"race": model.KindModel}
+    model_before: Callable            # (rūšis, iki) -> KindModel iš sesijų iki tol; mokant rodomas eigos skydelis
     request_update: Callable          # paleidžia duomenų atnaujinimą
 
     # --- dažnai naudojami
@@ -55,15 +56,19 @@ class Ctx:
     def checks(self, season, rnd, session):
         return status.weekend_checks(self.data, self.app.db, season, rnd, session)
 
+    def predict(self, season, rnd, session, before=None):
+        """Spėjimas; su `before` – tik iš iki tol žinomų duomenų (įvykusiai sesijai)."""
+        kind = kind_of(session)
+        fitted = self.model_before(kind, before) if before else self.fitted[kind]
+        return model.predict(self.data, season, rnd, session, fitted=fitted, before=before)
+
     def save_prediction(self, season, rnd, session, out):
-        ev = self.data.event(season, rnd)
-        model.save_prediction(self.app.db, season, rnd, session, out)
-        self.app.write_report(self.data, self.fitted, last=(ev["name"], session, out, ev.circuit))
+        self.app.publish(self.data, self.fitted, season, rnd, session, out)
 
     def run_backtest(self, season, players_season, progress):
         fresh = self.app.dataset()
         picks = self.app.excel().read(fresh.events[fresh.events.season == season]) if players_season else None
-        return backtest.run(fresh, picks, season=season, progress=progress)
+        return backtest.run(fresh, picks, seasons=(season,), progress=progress)
 
     def report_text(self, refresh=False):
         if refresh or not self.app.report_path.exists():

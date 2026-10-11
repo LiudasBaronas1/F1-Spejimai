@@ -20,6 +20,7 @@ PRACTICE = ["FP1", "FP2", "FP3"]
 QUALI_TYPE = ["SQ", "Q"]      # spėjama pagal vieno rato greitį
 RACE_TYPE = ["S", "R"]        # spėjama pagal lenktynių tempą ir starto poziciją
 COMPETITIVE = QUALI_TYPE + RACE_TYPE
+SPRINT_TYPE = ["SQ", "S"]     # sprinto savaitgalio sesijos (trumpesnės – modelis mokosi atskirą daugiklį)
 # Sesijos būsena: ok – oficialūs F1 duomenys (FastF1); fia – preliminarus rezultatas iš FIA klasifikacijos
 # (kol F1 archyvas vėluoja; vėliau perrašomas); pending – duomenų dar nėra.
 DONE_STATUSES = ("ok", "fia")

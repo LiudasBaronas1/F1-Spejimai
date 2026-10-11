@@ -52,11 +52,6 @@ def detect_corners(xy, min_turn_deg=35, min_gap=8):
     return corners
 
 
-def normalise(xy):
-    xy = xy - xy.min(axis=0)
-    return xy / xy.max()
-
-
 def outline(session):
     """(kontūras, posūkiai[(nr, x, y)]) normalizuotose koordinatėse 0..1."""
     xy = session.laps.pick_fastest().get_pos_data()[["X", "Y"]].to_numpy(float)

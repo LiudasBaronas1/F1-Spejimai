@@ -5,18 +5,22 @@ Importuojant moduliai nieko nekeičia – aplankai ir FastF1 talpykla paruošiam
 import json
 import shutil
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
-from . import config, features, reference, report, settings, sources, translations
+from . import config, features, model, reference, report, settings, sources, translations
 from .briefing import Briefing
-from .dataset import Dataset
+from .dataset import Dataset, kind_of
 from .db import Database
 from .excel import ExcelPicks
 from .i18n import DEFAULT_LANGUAGE, TranslationRepository, Translator
 from .preferences import Preferences
 from .reference import Reference
+from .scheduler import AutoUpdatePolicy
 from .sources.weather import calibration_summary
 from .track_info import TrackInfo
+
+LAST_UPDATE_KEY = "atnaujinta"          # nustatymai: kada paskutinį kartą atnaujinti duomenys (UTC ISO)
 
 
 def install_starter_data(starter_dir, db_path, calibration_path):
@@ -62,7 +66,7 @@ class App:
         return Reference.load(self.db)
 
     def dataset(self):
-        return Dataset.load(self.db, self.settings)
+        return Dataset.load(self.db, self.settings, self.reference())
 
     def sources(self):
         return sources.registry(self.db, self.reference(), self.cache_dir, self.calibration_path)
@@ -90,6 +94,9 @@ class App:
     def preferences(self):
         return Preferences(self.db)
 
+    def auto_update_policy(self):
+        return AutoUpdatePolicy.load(self.preferences())
+
     def translations(self):
         return TranslationRepository(self.db)
 
@@ -112,7 +119,28 @@ class App:
 
     # --- dažni veiksmai
     def update(self, season=config.SEASON, only=None, progress=None):
-        return sources.update_all(self.sources(), season, only, progress)
+        """Atnaujina duomenų šaltinius ir pažymi atnaujinimo laiką. Grąžina [(šaltinis, klaida)]."""
+        errors = sources.update_all(self.sources(), season, only, progress)
+        self.preferences().set(LAST_UPDATE_KEY, datetime.now(timezone.utc).isoformat())
+        return errors
+
+    def last_update(self):
+        return self.preferences().get(LAST_UPDATE_KEY)
+
+    def train(self, data, progress=None):
+        """Išmoko abu modelius ir išsaugo jų parametrus. Grąžina {"quali"/"race": KindModel}."""
+        fitted = model.fit_all(data, progress=progress)
+        model.save_weights(self.db, fitted)
+        return fitted
+
+    def predict(self, data, fitted, season, rnd, session):
+        return model.predict(data, season, rnd, session, fitted=fitted[kind_of(session)])
+
+    def publish(self, data, fitted, season, rnd, session, out):
+        """Išsaugo spėjimą ir atnaujina PARAMETRAI.md (su šiuo spėjimu)."""
+        model.save_prediction(self.db, season, rnd, session, out)
+        ev = data.event(season, rnd)
+        self.write_report(data, fitted, last=(ev["name"], session, out, ev.circuit))
 
     def write_report(self, data, fitted, last=None):
         """PARAMETRAI.md; last = (GP, sesija, spėjimas, trasa) – paskutinis spėjimas."""

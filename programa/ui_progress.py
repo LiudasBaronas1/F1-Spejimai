@@ -1,10 +1,9 @@
-"""Eigos skydelis: ilgas darbas (duomenų atnaujinimas, modelio mokymas) vyksta foniniame sraute, o sąsaja
-kas ~0,25 s perpiešia skydelį – laikrodžiai eina tolygiai, juosta juda ir tarp įvykių.
+"""Eigos skydelis: ilgas darbas (duomenų atnaujinimas, modelio mokymas – ui_jobs.Job) vyksta foniniame
+sraute, o sąsaja kas ~0,25 s perpiešia skydelį – laikrodžiai eina tolygiai, juosta juda ir tarp įvykių.
 
 Laiko prognozė remiasi tuo, kiek kiekvienas šaltinis užtruko ankstesniais kartais (nustatymas
 `saltiniu_trukmes`), o šaltinio viduje – vidutine vieno elemento trukme."""
 import json
-import threading
 import time
 
 import ui_style as ui
@@ -17,29 +16,6 @@ def clock(seconds):
     seconds = max(0, int(round(seconds)))
     m, s = divmod(seconds, 60)
     return f"{m // 60}:{m % 60:02d}:{s:02d}" if m >= 60 else f"{m}:{s:02d}"
-
-
-class Job:
-    """Darbas foniniame sraute. tracker sukuriamas prieš paleidžiant (kad skydelis jį turėtų iškart);
-    work(tracker) jį pildo (tik paprasti duomenys, be st.*)."""
-
-    def __init__(self, work, tracker):
-        self.tracker, self.result, self.error, self.t0 = tracker, None, None, time.monotonic()
-        self.thread = threading.Thread(target=self._run, args=(work,), daemon=True)
-        self.thread.start()
-
-    def _run(self, work):
-        try:
-            self.result = work(self.tracker)
-        except Exception as e:  # klaida parodoma sąsajoje
-            self.error = e
-
-    @property
-    def done(self):
-        return not self.thread.is_alive()
-
-    def elapsed(self):
-        return time.monotonic() - self.t0
 
 
 def follow(job, slot, render):

@@ -34,7 +34,7 @@ def render(c):
     with right:
         if st.button(t("sidebar.update"), type="primary", width="stretch", key="update_hero"):
             c.request_update()
-        st.caption(t("next.update_hint"))
+        st.caption(t("next.auto_hint"))
     ui.label(t("next.data_title"))
     checklist(c, SEASON, nr, ns)
     prediction_block(c, SEASON, nr, ns, "next")

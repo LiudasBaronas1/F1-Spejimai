@@ -207,9 +207,6 @@ table.f1-heat td.team { text-align: left; white-space: nowrap; padding-right: .8
 [data-testid="stAlert"] { border-radius: 6px; }
 
 /* šoninė juosta */
-.f1-side-brand { font-size: 1.25rem; font-weight: 900; font-style: italic; text-transform: uppercase;
-    padding-right: .2em; margin: -.6rem 0 .2rem; }
-.f1-side-brand span { color: var(--red); }
 .f1-side-info { background: var(--card); border-left: 3px solid var(--line); border-radius: 0 8px 0 0; padding: .55rem .8rem;
     margin: .6rem 0; font-size: .86rem; color: var(--muted); line-height: 1.45; }
 .f1-side-info b { display: block; color: #fff; font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; }

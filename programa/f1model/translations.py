@@ -17,10 +17,17 @@ UI = {
     # --- šoninė juosta
     "sidebar.language": ("Kalba", "Language"),
     "sidebar.update": ("Atnaujinti duomenis", "Update data"),
-    "sidebar.update_info": ("Parsiunčia rezultatus, treniruotes, orus, lažybų rinkas, FIA dokumentus ir naujienas. "
-                            "Geriausia – likus 30–60 min. iki sesijos.",
-                            "Downloads results, practice, weather, betting markets, FIA documents and news. "
-                            "Best done 30–60 min before a session."),
+    "sidebar.update_hint": ("Duomenys (rezultatai, treniruotės, orai, lažybų rinkos, FIA dokumentai, naujienos) "
+                            "atnaujinami automatiškai; mygtuku – iškart.",
+                            "Data (results, practice, weather, betting markets, FIA documents, news) updates "
+                            "automatically; press the button to update now."),
+    "auto.running": ("Automatiškai atnaujinama… {pct}", "Updating automatically… {pct}"),
+    "auto.next": ("Kitas automatinis atnaujinimas: {at}", "Next automatic update: {at}"),
+    "auto.off": ("Automatinis atnaujinimas išjungtas.", "Automatic updates are off."),
+    "auto.settings": ("Automatinis atnaujinimas", "Automatic updates"),
+    "auto.toggle": ("Įjungtas", "On"),
+    "auto.idle": ("Tarp etapų – kas (min.)", "Between race weekends – every (min)"),
+    "auto.weekend": ("Lenktynių savaitgalį – kas (min.)", "On a race weekend – every (min)"),
     "sidebar.last_update": ("Paskutinis atnaujinimas", "Last update"),
     "sidebar.never": ("dar nebuvo šioje programoje", "not yet in this app"),
     # --- meniu
@@ -33,7 +40,7 @@ UI = {
     # --- artimiausia sesija
     "next.kicker": ("Artimiausia sesija", "Next session"),
     "next.starts_in": ("Prasidės po", "Starts in"),
-    "next.update_hint": ("Atnaujinkite likus 30–60 min. iki sesijos.", "Update 30–60 min before the session."),
+    "next.auto_hint": ("Duomenys atnaujinami automatiškai, ypač prieš sesiją.", "Data updates automatically, especially before the session."),
     "next.data_title": ("Duomenys šiam spėjimui", "Data for this prediction"),
     "check.results": ("Rezultatai", "Results"),
     "check.practice": ("Treniruotės", "Practice"),
@@ -104,25 +111,37 @@ UI = {
     "model.tab_how": ("Kaip veikia", "How it works"),
     "model.tab_factors": ("Veiksniai ir svoriai", "Factors and weights"),
     "model.tab_params": ("Parametrai", "Parameters"),
-    "model.how.1": ("Surenkami faktai apie kiekvieną vairuotoją: forma, starto vieta, treniruočių tempas, lažybų rinka, "
-                    "orai, trasos istorija.", "Facts are collected for every driver: form, grid position, practice "
-                    "pace, betting market, weather, track history."),
-    "model.how.2": ("Kiekvienam faktui suteikiamas svoris, išmoktas iš 2024–2026 m. sesijų: kas praeityje geriausiai "
-                    "nuspėjo TOP3.", "Each fact gets a weight learned from 2024–2026 sessions: what best predicted "
-                    "the TOP3 in the past."),
-    "model.how.3": ("Faktų ir svorių suma – vairuotojo „stiprumas“.", "The weighted sum is the driver's \"strength\"."),
-    "model.how.4": ("Sesija 20 000 kartų „perleidžiama“ su atsitiktinumu (lyjant – didesniu); gaunamos P1, P2, P3 "
-                    "tikimybės.", "The session is simulated 20,000 times with randomness (more in the rain), "
-                    "giving P1, P2 and P3 chances."),
-    "model.how.5": ("Parenkamas trejetas, kuris pagal mūsų taisykles vidutiniškai atneša daugiausiai taškų.",
-                    "The trio that scores the most points on average under our rules is picked."),
+    "model.step.1": ("Surenkami faktai apie kiekvieną vairuotoją: forma, starto vieta, treniruočių tempas, lažybų "
+                     "rinka, orai, trasos istorija.", "Facts are collected for every driver: form, grid position, "
+                     "practice pace, betting market, weather, track history."),
+    "model.step.2": ("Kiekvienam faktui suteikiamas svoris, išmoktas iš 2024–2026 m. sesijų: kas praeityje geriausiai "
+                     "nuspėjo TOP3.", "Each fact gets a weight learned from 2024–2026 sessions: what best predicted "
+                     "the TOP3 in the past."),
+    "model.step.3": ("Faktų ir svorių suma – vairuotojo „stiprumas“. Sprinte ir lyjant stiprumų skirtumai mažesni "
+                     "(daugiau atsitiktinumo).", "The weighted sum is the driver's \"strength\". In sprints and in the "
+                     "rain the differences are smaller (more randomness)."),
+    "model.step.4": ("Lenktynėms ir sprintams įvertinama, kokia tikimybė, kad vairuotojas nefinišuos (gedimai, "
+                     "avarijos – pagal vairuotojo ir komandos istoriją).", "For races and sprints the chance that a "
+                     "driver will not finish (failures, crashes – from the driver's and team's history) is estimated."),
+    "model.step.5": ("Sesija 20 000 kartų „perleidžiama“ su atsitiktinumu; gaunamos P1, P2, P3 tikimybės.",
+                     "The session is simulated 20,000 times with randomness, giving P1, P2 and P3 chances."),
+    "model.step.6": ("Parenkamas trejetas, kuris pagal mūsų taisykles vidutiniškai atneša daugiausiai taškų.",
+                     "The trio that scores the most points on average under our rules is picked."),
     "model.importance": ("Kas lemia spėjimą", "What drives the prediction"),
     "model.importance_sub": ("Kiekvieno veiksnio dalis (išmokta iš {q} kvalifikacijų ir {r} lenktynių)",
                              "Share of each factor (learned from {q} qualifying and {r} race sessions)"),
     "model.share": ("Dalis sprendime", "Share of the decision"),
-    "model.accuracy": ("2025–2026 m. modelis vidutiniškai surenka apie 3 taškus iš 6 per sesiją; reali viršutinė riba – "
-                       "apie 3,2–3,4.", "In 2025–2026 the model averages about 3 of 6 points per session; the "
-                       "realistic ceiling is about 3.2–3.4."),
+    "model.accuracy_note": ("2025–2026 m. modelis vidutiniškai surenka apie 3 taškus iš 6 per sesiją; reali viršutinė "
+                            "riba – apie 3,2–3,4. Tikslumas tikrinamas skyriuje „Sezonas“ → „Modelis prieš žaidėjus“.",
+                            "In 2025–2026 the model averages about 3 of 6 points per session; the realistic ceiling is "
+                            "about 3.2–3.4. Accuracy is checked under Season → Model vs players."),
+    "model.sprint_q": ("Sprinto kvalifikacija", "Sprint qualifying"),
+    "model.sprint_r": ("Sprintas", "Sprint"),
+    "model.sprint_sub": ("stiprumų skirtumų daugiklis, išmoktas iš duomenų (1 = kaip įprastoje sesijoje)",
+                         "strength-gap multiplier learned from data (1 = same as a normal session)"),
+    "model.chaos": ("Lietaus chaosas", "Rain chaos"),
+    "model.chaos_sub": ("lyjant stiprumų skirtumai ×(1 − chaosas · lietaus tikimybė)",
+                        "in the rain strength gaps ×(1 − chaos · chance of rain)"),
     # --- duomenys
     "data.tab_status": ("Duomenų būklė", "Data status"),
     "data.tab_reference": ("Žinynai", "Reference tables"),
@@ -314,6 +333,7 @@ UI = {
     "why.value": ("Indėlis į stiprumą", "Contribution to strength"),
     "col.driver":("Vairuotojas", "Driver"),
     "col.team": ("Komanda", "Team"),
+    "col.dnf": ("Nefinišuos", "DNF"),
     # --- svarbu šiam etapui (spėjimo skirtukas)
     "weekend.title": ("Svarbu šiam etapui", "Key facts for this round"),
     "weekend.sub": ("FIA dokumentai ir naujienos", "FIA documents and news"),
@@ -395,6 +415,19 @@ UI = {
     "backtest.run": ("Paleisti testą", "Run backtest"),
     "backtest.run_help": ("Užtrunka 1–2 min.", "Takes 1–2 min."),
     "backtest.total": ("Taškai iš viso", "Total points"),
+    "backtest.accuracy": ("Modelio tikslumas", "Model accuracy"),
+    "backtest.accuracy_sub": ("taškai svyruoja dėl sėkmės; tikimybių matai (mažiau = geriau) – stabilesni",
+                              "points swing with luck; the probability scores (lower = better) are steadier"),
+    "backtest.points": ("Modelio taškai", "Model points"),
+    "backtest.points_sub": ("per {n} sesijų, vidutiniškai {avg}", "over {n} sessions, {avg} on average"),
+    "backtest.expected": ("Tikėtini taškai", "Expected points"),
+    "backtest.expected_sub": ("kiek modelis tikėjosi surinkti – turi būti arti tikrų", "what the model expected to "
+                              "score – should be close to the real total"),
+    "backtest.logloss": ("Vietų log-loss", "Position log-loss"),
+    "backtest.logloss_sub": ("kiek modelis nustebo tikru TOP3 (mažiau = geriau)",
+                             "how surprised the model was by the real TOP3 (lower = better)"),
+    "backtest.brier": ("TOP3 Brier", "TOP3 Brier"),
+    "backtest.brier_sub": ("TOP3 tikimybių paklaida (mažiau = geriau)", "error of the TOP3 chances (lower = better)"),
     "backtest.sessions": ("Kiekviena sesija", "Every session"),
     "backtest.by_type": ("Pagal sesijos tipą", "By session type"),
     # --- parametrai

@@ -8,7 +8,6 @@ import streamlit as st
 import ui_style as ui
 from f1model import features, model
 from f1model.config import DONE_STATUSES
-from f1model.dataset import kind_of
 
 CHECK_ORDER = ("results", "practice", "grid", "weather", "odds", "news")
 
@@ -106,16 +105,7 @@ def checklist(c, season, rnd, session):
 def predict(c, season, rnd, session):
     """Spėjimas; įvykusiai sesijai – tik su iki jos žinomais duomenimis."""
     srow = c.data.session_rows(season, rnd, session).iloc[0]
-    if srow.status in DONE_STATUSES:
-        w = c.weights_before(kind_of(session), srow.date_utc)
-        return model.predict(c.data, season, rnd, session, before=srow.date_utc, weights=w)
-    return model.predict(c.data, season, rnd, session, weights=c.fitted[kind_of(session)][0])
-
-
-def contributions(c, out):
-    """Kiek kiekvienas veiksnys prideda prie vairuotojo stiprumo (svoris × reikšmė × lietaus suspaudimas)."""
-    ch = 1.0 - c.S.wet_chaos * out["rain"]
-    return pd.DataFrame({f: out["table"][f] * w * ch for f, w in out["weights"].items()})
+    return c.predict(season, rnd, session, before=srow.date_utc if srow.status in DONE_STATUSES else None)
 
 
 def reasons(c, out, contrib, n=2):
@@ -141,7 +131,7 @@ def prediction_block(c, season, rnd, session, key):
     t, ref, names = c.t, c.ref, c.session_names
     srow, ev = c.data.session_rows(season, rnd, session).iloc[0], c.data.event(season, rnd)
     out, teams = predict(c, season, rnd, session), c.data.teams(season)
-    contrib = contributions(c, out)
+    contrib = out["contrib"]
 
     head, action = st.columns([4, 1.3], vertical_alignment="center")
     head.markdown(f"<div class='f1-label' style='margin:0'>{html.escape(t('predict.pick'))}</div>",
@@ -166,7 +156,7 @@ def prediction_block(c, season, rnd, session, key):
     left, right = st.columns([3, 2], gap="large")
     with left:
         ui.section(t("section.probabilities"), t("section.probabilities_sub"))
-        ui.probability_table(out["table"], teams, ref.team_color, t("col.driver"), t("col.team"))
+        ui.probability_table(out["table"], teams, ref.team_color, t("col.driver"), t("col.team"), t("col.dnf"))
     with right:
         key_facts(c, season, rnd, session, ev, out["table"].index[:8], teams)
     with st.expander(t("section.why_full")):

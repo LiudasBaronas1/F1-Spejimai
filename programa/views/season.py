@@ -61,10 +61,17 @@ def backtest_view(c, season):
     df = st.session_state.get(f"bt_{season}")
     if df is not None and not df.empty:
         cols = backtest.score_columns(df, c.ref.players)
+        s = backtest.summary(df)
+        ui.section(t("backtest.accuracy"), t("backtest.accuracy_sub"))
+        ui.tiles([(t("backtest.points"), f"{s['points']}", t("backtest.points_sub", n=s["sessions"],
+                                                              avg=f"{s['per_session']:.2f}")),
+                  (t("backtest.expected"), f"{s['expected']:.0f}", t("backtest.expected_sub")),
+                  (t("backtest.logloss"), f"{s['logloss']:.3f}", t("backtest.logloss_sub")),
+                  (t("backtest.brier"), f"{s['brier']:.3f}", t("backtest.brier_sub"))])
         ui.section(t("backtest.total"))
         st.bar_chart(df[cols].sum().sort_values(ascending=False), color=ui.RED)
         ui.section(t("backtest.sessions"))
-        st.dataframe(df.drop(columns="round"), width="stretch", hide_index=True)
+        st.dataframe(df.drop(columns=["season", "round"]), width="stretch", hide_index=True)
         ui.section(t("backtest.by_type"))
         st.dataframe(df.groupby("session")[cols].sum().rename(index=c.session_names), width="stretch")
 

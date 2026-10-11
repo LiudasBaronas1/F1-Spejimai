@@ -1,12 +1,18 @@
 """Plackett-Luce spėjimų modelis.
 
-Stiprumas  theta = Σ svoris_i · požymis_i   (požymiai – features.py registre)
-P(rezultatų eilė) ~ exp(theta); svoriai išmokstami iš tikrų TOP3 rezultatų (maks. tikėtinumas).
-Monte Carlo simuliacija -> P(P1), P(P2), P(P3). Spėjimas – trejetas su daugiausiai tikėtinų
-taškų: Σ [P(TOP3) + P(tiksli vieta)]  (2 tšk. už tikslią vietą, 1 tšk. už TOP3).
+Stiprumas  theta = Σ svoris_i · požymis_i × (1 − chaosas · lietus) × (sprinto daugiklis, jei sprintas)
+P(rezultatų eilė) ~ exp(theta); svoriai ir sprinto daugiklis išmokstami iš tikrų TOP3 rezultatų
+(maks. tikėtinumas), chaosas – nustatymas. Lenktynėms tikimybė, kad vairuotojas nefinišuos
+(`features.dnf_probability`), įskaičiuojama simuliacijoje.
+Monte Carlo simuliacija -> P(P1), P(P2), P(P3). Spėjimas – trejetas su daugiausiai tikėtinų taškų:
+Σ [P(TOP3) + P(tiksli vieta)]  (2 tšk. už tikslią vietą, 1 tšk. už TOP3).
+
+Išbandyta ir atmesta (2026-10, porinis bootstrap 2025–2026 m.): chaoso mokymasis iš duomenų (nepagerino),
+mokymasis tik iš finišavusių (pablogino log-loss).
 
 Nustatymai imami iš `data.settings`, duomenų bazė perduodama įrašymo funkcijoms – globalios būsenos nėra.
 """
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from itertools import permutations
 
@@ -15,18 +21,36 @@ import pandas as pd
 from scipy.optimize import minimize
 
 from . import features
-from .config import QUALI_TYPE, RACE_TYPE
+from .config import QUALI_TYPE, RACE_TYPE, SPRINT_TYPE
 from .dataset import kind_of
 
 KINDS = {"quali": QUALI_TYPE, "race": RACE_TYPE}
+SPRINT_L2 = 1.0             # sprinto daugiklio traukimas link 1 (kai sprintų mažai – lieka arti 1)
+MIN_SAMPLES = 6
 
 
-def chaos(X, S):
-    """Lyjant rezultatai atsitiktinesni: stiprumų skirtumai sumažinami."""
-    return 1.0 - S.wet_chaos * X.attrs.get("rain", 0.0)
+@dataclass
+class KindModel:
+    """Išmoktas vienos rūšies (kvalifikacijos / lenktynių) modelis."""
+    weights: dict           # požymis -> svoris
+    n_samples: int
+    chaos: float            # lyjant stiprumų skirtumai mažinami ×(1 − chaos · lietus) (nustatymas)
+    sprint: float = 1.0     # sprinto sesijose stiprumų skirtumai ×sprint (trumpesnė = atsitiktinesnė, jei < 1)
+
+    def scale(self, session, rain):
+        return (1.0 - self.chaos * rain) * (self.sprint if session in SPRINT_TYPE else 1.0)
+
+    def effective(self, S):
+        """Išmokti svoriai × rankiniai daugikliai (išjungti požymiai – 0)."""
+        active = set(S.active(features.names()))
+        return {f: self.weights.get(f, 0.0) * S.multiplier(f) if f in active else 0.0 for f in features.names()}
 
 
-def top3_loglik(theta, top3_idx):
+def default_model(S, n=0):
+    return KindModel({f: features.REGISTRY[f].default_weight for f in S.active(features.names())}, n, S.wet_chaos)
+
+
+def plackett_luce_loglik(theta, top3_idx):
     ll, remaining = 0.0, np.ones(len(theta), bool)
     for i in top3_idx:
         ll += theta[i] - np.log(np.exp(theta[remaining]).sum())
@@ -36,8 +60,17 @@ def top3_loglik(theta, top3_idx):
 
 # ------------------------------------------------------------------ mokymasis
 
+@dataclass
+class Sample:
+    X: np.ndarray           # [vairuotojai × aktyvūs požymiai] × lietaus suspaudimas
+    top3: list              # TOP3 eilučių indeksai X
+    weight: float
+    sprint: bool
+
+
 def training_samples(kind, data, upto=None, progress=None):
-    S, names = data.settings, features.names()
+    S = data.settings
+    names = S.active(features.names())
     done = data.done_sessions(S.train_seasons, KINDS[kind], before=upto)
     latest = done.season.max() if not done.empty else None
     samples = []
@@ -49,39 +82,40 @@ def training_samples(kind, data, upto=None, progress=None):
         idx = [X.index.get_loc(d) for d in top if d in X.index]
         if len(idx) == 3:
             sw = S.current_season_sample_weight if s.season == latest else 1.0
-            samples.append((X[names].values * chaos(X, S), idx, sw))
+            rain_scale = 1.0 - S.wet_chaos * X.attrs["rain"]
+            samples.append(Sample(X[names].values * rain_scale, idx, sw, s.session in SPRINT_TYPE))
     return samples
 
 
 def fit_weights(kind, data, upto=None, progress=None):
-    """Svoriai, išmokti iš sesijų iki `upto`. Grąžina (svoriai, imčių skaičius).
-    progress(dalis 0..1, detalė) – eigos juostai (nebūtina)."""
-    names = features.names()
-    default = {f: features.REGISTRY[f].default_weight for f in names}
+    """KindModel, išmoktas iš sesijų iki `upto`. progress(dalis 0..1, detalė) – eigos juostai (nebūtina)."""
+    S = data.settings
+    names = S.active(features.names())
+    start = default_model(S)
     samples = training_samples(kind, data, upto, progress)
     if progress:
         progress(1.0, "")   # požymiai paruošti, toliau – svorių optimizavimas
-    if len(samples) < 6:
-        return default, len(samples)
-    n = sum(sw for _, _, sw in samples)
-    penalised = np.array([0.0 if f in data.settings.l2_free else data.settings.l2 for f in names])
+    if len(samples) < MIN_SAMPLES:
+        return default_model(S, len(samples))
+    n, k = sum(s.weight for s in samples), len(names)
+    has_sprint = any(s.sprint for s in samples)
 
-    def nll(w):
-        return -sum(sw * top3_loglik(X @ w, idx) for X, idx, sw in samples) + n * (penalised * w) @ w
+    def nll(p):
+        w, log_sprint = p[:k], p[k]   # sprinto daugiklis – log skalėje (visada teigiamas)
+        ll = sum(s.weight * plackett_luce_loglik((s.X @ w) * (np.exp(log_sprint) if s.sprint else 1.0), s.top3)
+                 for s in samples)
+        return -ll + n * S.l2 * (w @ w) + n * SPRINT_L2 * log_sprint ** 2
 
-    opt = minimize(nll, np.array(list(default.values())), method="L-BFGS-B")
-    return dict(zip(names, map(float, opt.x))), len(samples)
+    p0 = np.r_[[start.weights[f] for f in names], 0.0]
+    bounds = [(None, None)] * k + [(-1.5, 1.5) if has_sprint else (0.0, 0.0)]
+    p = minimize(nll, p0, method="L-BFGS-B", bounds=bounds).x
+    return KindModel(dict(zip(names, map(float, p[:k]))), len(samples), S.wet_chaos, float(np.exp(p[k])))
 
 
 def fit_all(data, progress=None):
-    """progress(dalis 0..1, modelis 'quali'/'race', dalis to modelio viduje, detalė)."""
+    """{"quali"/"race": KindModel}. progress(dalis 0..1, modelis, dalis to modelio viduje, detalė)."""
     part = lambda i, k: (lambda f, detail="": progress((i + f) / len(KINDS), k, f, detail))
     return {k: fit_weights(k, data, progress=part(i, k) if progress else None) for i, k in enumerate(KINDS)}
-
-
-def effective_weights(w, S):
-    """Išmokti svoriai × rankiniai daugikliai."""
-    return {f: w[f] * S.multiplier(f) for f in features.names()}
 
 
 def importance(w):
@@ -92,12 +126,14 @@ def importance(w):
 
 # ------------------------------------------------------------------ spėjimas
 
-def simulate(theta, n, seed=0):
+def simulate(theta, n, dnf=None, seed=0):
     """Plackett-Luce = stiprumas + Gumbel triukšmas, vieta po vietos (P1, tada P2 iš likusių, tada P3).
-    Grąžina [vairuotojas × vieta] tikimybes."""
+    dnf – kiekvieno vairuotojo tikimybė nefinišuoti (tokie į vietas nepatenka). Grąžina [vairuotojas × vieta]."""
     n, d = int(n), len(theta)
     rng = np.random.default_rng(seed)
-    taken, rows = np.zeros((n, d), bool), np.arange(n)
+    rows = np.arange(n)
+    taken = rng.random((n, d)) < dnf[None, :] if dnf is not None else np.zeros((n, d), bool)
+    taken[taken.sum(axis=1) > d - 3] = False      # (praktiškai neįmanoma) – kad liktų bent trys
     probs = np.zeros((d, 3))
     for k in range(3):
         perf = theta[None, :] + rng.gumbel(size=(n, d))
@@ -116,19 +152,22 @@ def best_pick(probs, drivers):
     return [drivers[i] for i in best], value(best)
 
 
-def predict(data, season, rnd, session, weights=None, before=None):
+def predict(data, season, rnd, session, fitted=None, before=None):
+    """fitted – KindModel (None – išmokoma iš sesijų iki `before`). Grąžina spėjimą, tikimybių lentelę ir
+    kiekvieno požymio indėlį į vairuotojo stiprumą (contrib)."""
     S = data.settings
     X = features.build(data, season, rnd, session, before=before)
-    if weights is None:
-        weights = fit_weights(kind_of(session), data, upto=before)[0]
-    w = effective_weights(weights, S)
-    names = features.names()
-    theta = X[names].values @ np.array([w[f] for f in names]) * chaos(X, S)
-    probs = simulate(theta, S.n_sim)
+    fitted = fitted or fit_weights(kind_of(session), data, upto=before)
+    w, names = fitted.effective(S), features.names()
+    scale = fitted.scale(session, X.attrs["rain"])
+    contrib = X[names] * np.array([w[f] for f in names]) * scale
+    probs = simulate(contrib.sum(axis=1).values, S.n_sim, X.attrs["dnf"].values)
     pick, ev = best_pick(probs, list(X.index))
-    table = pd.DataFrame(probs, index=X.index, columns=["P1", "P2", "P3"]).assign(TOP3=probs.sum(axis=1))
+    table = pd.DataFrame(probs, index=X.index, columns=["P1", "P2", "P3"]).assign(
+        TOP3=probs.sum(axis=1), DNF=X.attrs["dnf"].values)
     table = table.join(X).sort_values("TOP3", ascending=False)
-    return dict(pick=pick, expected=ev, table=table, weights=w, rain=X.attrs["rain"], temp=X.attrs["temp"])
+    return dict(pick=pick, expected=ev, table=table, contrib=contrib.loc[table.index], weights=w,
+                rain=X.attrs["rain"], temp=X.attrs["temp"])
 
 
 def score(pick, actual_top3):
@@ -141,8 +180,11 @@ def score(pick, actual_top3):
 
 def save_weights(db, fitted):
     now = datetime.now(timezone.utc).isoformat()
-    db.write("model_params", [dict(kind=kind, name=k, value=float(v), n_samples=n, fitted_at=now)
-                              for kind, (w, n) in fitted.items() for k, v in w.items()])
+    rows = []
+    for kind, m in fitted.items():
+        values = {**m.weights, "_sprinto_daugiklis": m.sprint}
+        rows += [dict(kind=kind, name=k, value=float(v), n_samples=m.n_samples, fitted_at=now) for k, v in values.items()]
+    db.write("model_params", rows, replace_where=("1=1", ()))
 
 
 def save_prediction(db, season, rnd, session, out):

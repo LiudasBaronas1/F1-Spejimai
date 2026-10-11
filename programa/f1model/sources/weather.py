@@ -195,16 +195,17 @@ class WeatherSource(DataSource):
 
 
 def finalize(db, season, path):
-    """Galutinė lietaus tikimybė ir temperatūra: faktas iš jutiklių, jei yra, kitaip – kalibruota prognozė."""
+    """Galutinė lietaus tikimybė ir temperatūra: faktas iš jutiklių, jei yra, kitaip – kalibruota prognozė.
+    Prognozė saugoma ir atskirai (rain_prob_fc) – sezono atkūrimas spėja su ja, kaip ir tikru metu."""
     w = db.query("SELECT * FROM weather WHERE season=?", (season,))
     if w.empty:
         return
     has_fc = w.fc_pop.notna() & w.region_rain_mm.notna()
-    prob = pd.Series(np.nan, index=w.index)
-    prob[has_fc] = calibrated_prob(w[has_fc].fillna({"fc_precip": 0, "fc_cloud": 0.5}), path)
+    w["rain_prob_fc"] = np.nan
+    w.loc[has_fc, "rain_prob_fc"] = calibrated_prob(w[has_fc].fillna({"fc_precip": 0, "fc_cloud": 0.5}), path)
     fact = w.track_rain_frac.notna()
-    w["rain_prob"] = np.where(fact, w.track_rain_frac.fillna(0).map(track_wetness), prob)
+    w["rain_prob"] = np.where(fact, w.track_rain_frac.fillna(0).map(track_wetness), w.rain_prob_fc)
     w["rain_mm"] = w.fc_precip
     w["temp_c"] = w.track_air_c.where(fact, w.temp_c)
     w["source"] = np.where(fact, "trasos jutikliai", "prognozė")
-    db.write("weather", w[KEYS + ["rain_prob", "rain_mm", "temp_c", "source"]].to_dict("records"), KEYS)
+    db.write("weather", w[KEYS + ["rain_prob", "rain_prob_fc", "rain_mm", "temp_c", "source"]].to_dict("records"), KEYS)

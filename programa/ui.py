@@ -1,100 +1,66 @@
 """F1 spėjimų programa (sąsaja). Paleidimas: darbalaukio nuoroda „F1 Spėjimai“ arba F1 Spėjimai.vbs.
 
-Šis failas tik sujungia dalis: sukuria `App` (kompozicijos šaknis), vertėją, `Controller` (foniniai darbai –
-atnaujinimas ir mokymas su eigos skydeliu) ir perduoda puslapiams (`views/`) siaurą `Ctx` sąsają.
-Išvaizda – ui.css ir ui_style.py; tekstai – DB lentelė `vertimai` (f1model/i18n.py)."""
+Šis failas tik sujungia dalis: sukuria `App` (kompozicijos šaknis), foninius darbus (`ui_jobs.Jobs` –
+atnaujinimas, mokymas, automatinis atnaujinimas pagal grafiką), `Controller` (rodo darbų eigą) ir perduoda
+puslapiams (`views/`) siaurą `Ctx` sąsają. Išvaizda – ui.css ir ui_style.py; tekstai – DB lentelė `vertimai`."""
 import os
 import threading
-from datetime import datetime, timezone
+import time
+from dataclasses import replace
 
 import streamlit as st
 
 import ui_progress as prog
 import ui_style as ui
 import views
-from f1model import features, model
+from f1model import features
 from f1model.app import App
 from f1model.config import SEASON
 from f1model.i18n import DEFAULT_LANGUAGE
+from ui_jobs import AutoUpdater, Jobs
 from views.common import local
 
-
-@st.cache_resource
-def get_app():
-    return App.create()
+STATUS_REFRESH_S = 5
 
 
 @st.cache_resource
-def shared_state():
-    """Vienos programos būsena tarp perkrovimų: apmokyti modeliai ir vykstantys foniniai darbai."""
-    return {"models": {}, "jobs": {}}
+def services():
+    """Viena programa ir jos foniniai darbai visiems langams; automatinis atnaujinimas paleidžiamas čia."""
+    app = App.create()
+    jobs = Jobs(app)
+    updater = AutoUpdater(jobs)
+    updater.start()
+    return app, jobs, updater
 
 
 class Controller:
-    """Ilgi darbai su eigos skydeliu. Priklausomybės (programa, vertėjas, būsena) perduodamos konstruktoriuje."""
+    """Rodo foninių darbų eigą. Priklausomybės (darbai, vertėjas) perduodamos konstruktoriuje."""
 
-    def __init__(self, app, t, state):
-        self.app, self.t, self.models, self.jobs = app, t, state["models"], state["jobs"]
+    def __init__(self, jobs, t):
+        self.jobs, self.t = jobs, t
 
-    def version(self):
-        """Keičiasi tik pasikeitus modelio duomenims arba Excel failui (ne kalbai ar išsaugotam spėjimui)."""
-        x = self.app.excel_path
-        return self.app.db.data_version(), x.stat().st_mtime if x.exists() else 0
-
-    def _run(self, key, work, tracker, render):
-        """Paleidžia (arba prisijungia prie jau vykstančio) foninį darbą ir rodo jo eigą, kol baigsis."""
-        if key not in self.jobs:
-            self.jobs[key] = prog.Job(work, tracker())
-        try:
-            return prog.follow(self.jobs[key], st.empty(), render)
-        finally:
-            if self.jobs.get(key) is not None and self.jobs[key].done:
-                self.jobs.pop(key, None)
-
-    def _trained(self, key, title, kinds, fit):
-        if key not in self.models:
-            names = {"quali": self.t("progress.model_quali"), "race": self.t("progress.model_race")}
-            self.models[key] = self._run(key, fit, lambda: prog.TrainTracker(kinds),
-                                         lambda job: prog.render_training(job, self.t, title, names))
-        return self.models[key]
+    def _follow_training(self, job, title):
+        names = {"quali": self.t("progress.model_quali"), "race": self.t("progress.model_race")}
+        return prog.follow(job, st.empty(), lambda j: prog.render_training(j, self.t, title, names))
 
     def model(self):
-        """(Dataset, apmokyti svoriai) dabartinei duomenų versijai."""
-        def fit(tracker):
-            data = self.app.dataset()
-            fitted = model.fit_all(data, progress=tracker)
-            model.save_weights(self.app.db, fitted)
-            return data, fitted
-        return self._trained(("model", self.version()), self.t("progress.training_title"), list(model.KINDS), fit)
+        """(Dataset, {"quali"/"race": KindModel}) dabartinei duomenų versijai (jei reikia – apmokoma)."""
+        ready = self.jobs.model()
+        return ready or self._follow_training(self.jobs.train(), self.t("progress.training_title"))
 
-    def weights_before(self, data):
-        """Funkcija (rūšis, iki) -> svoriai, išmokti tik iš sesijų iki nurodyto laiko."""
-        def get(kind, upto):
-            return self._trained(("before", self.version(), kind, upto), self.t("progress.training_before_title"),
-                                 [kind], lambda tracker: model.fit_weights(
-                                     kind, data, upto=upto, progress=lambda f, d="": tracker(f, kind, f, d))[0])
-        return get
-
-    @property
-    def updating(self):
-        return "update" in self.jobs
+    def model_before(self, kind, upto, data):
+        """Modelis, išmoktas tik iš sesijų iki `upto` (įvykusios sesijos spėjimui)."""
+        ready, job = self.jobs.train_before(data, kind, upto)
+        return ready or self._follow_training(job, self.t("progress.training_before_title"))
 
     def update(self):
-        """Duomenų atnaujinimas; grąžina [(šaltinis, klaida)]."""
-        sources = self.app.sources()
+        """Duomenų atnaujinimas su eigos skydeliu (prisijungia ir prie vykstančio automatinio)."""
+        job = self.jobs.update()
+        sources = self.jobs.app.sources()
         keys = [type(s).__name__ for s in sources]
-        prefs = self.app.preferences()
-        expected = {**{type(s).__name__: s.expected_s for s in sources}, **prog.load_durations(prefs)}
         names = [self.t.get(f"source.{k}", s.label) for k, s in zip(keys, sources)]
         descs = [self.t.get(f"source.{k}.desc", "") for k in keys]
-
-        def work(tracker):
-            errors = self.app.update(SEASON, progress=tracker)
-            prog.save_durations(prefs, tracker.durations())
-            prefs.set("atnaujinta", datetime.now(timezone.utc).isoformat())
-            return errors
-        return self._run("update", work, lambda: prog.UpdateTracker(keys, expected),
-                         lambda job: prog.render_update(job, self.t, names, descs))
+        return prog.follow(job, st.empty(), lambda j: prog.render_update(j, self.t, names, descs))
 
 
 def request_update():
@@ -102,13 +68,44 @@ def request_update():
     st.rerun()
 
 
-def sidebar(app, t, languages):
-    with st.sidebar:
-        st.caption(t("sidebar.update_info"))
-        last = app.preferences().get("atnaujinta")
+@st.fragment(run_every=STATUS_REFRESH_S)
+def auto_status(app, jobs, updater, t):
+    """Šoninio meniu automatinio atnaujinimo būsena (persipiešia savaime). Kai automatinis atnaujinimas
+    baigiasi ir modelis apmokytas – perkrauna visą puslapį su naujais duomenimis."""
+    job = jobs.update_job
+    if job is not None:
+        frac, _ = job.tracker.overall(time.monotonic())
+        st.progress(frac, text=t("auto.running", pct=f"{frac:.0%}"))
+    else:
+        last = app.last_update()
         ui.side_info(t("sidebar.last_update"), local(last, "%Y-%m-%d %H:%M") if last else t("sidebar.never"))
-        for name, err in st.session_state.get("update_errors", []):
-            st.warning(f"{name}: {err}")
+        nxt = updater.next_due()
+        st.caption(t("auto.next", at=local(nxt.isoformat(), "%m-%d %H:%M")) if nxt else t("auto.off"))
+    for name, err in jobs.last_errors:
+        st.warning(f"{name}: {err}")
+    if st.session_state.get("generation", jobs.generation) != jobs.generation and job is None and jobs.model():
+        st.rerun(scope="app")
+
+
+def auto_settings(app, t):
+    policy = app.auto_update_policy()
+    with st.expander(t("auto.settings")):
+        enabled = st.toggle(t("auto.toggle"), value=policy.enabled)
+        idle = st.number_input(t("auto.idle"), 15, 1440, policy.idle_min, step=15)
+        weekend = st.number_input(t("auto.weekend"), 5, 240, policy.weekend_min, step=5)
+        new = replace(policy, enabled=enabled, idle_min=int(idle), weekend_min=int(weekend))
+        if new != policy:
+            new.save(app.preferences())
+            st.rerun()
+
+
+def sidebar(app, jobs, updater, t, languages):
+    with st.sidebar:
+        if st.button(t("sidebar.update"), width="stretch", type="primary", key="update_side"):
+            request_update()
+        st.caption(t("sidebar.update_hint"))
+        auto_status(app, jobs, updater, t)
+        auto_settings(app, t)
         st.divider()
         st.selectbox(t("sidebar.language"), list(languages), format_func=languages.get, key="lang",
                      on_change=lambda: app.preferences().set("kalba", st.session_state["lang"]))
@@ -118,7 +115,7 @@ def sidebar(app, t, languages):
 
 
 def main():
-    app = get_app()
+    app, jobs, updater = services()
     languages = app.translations().languages()
     if st.session_state.get("lang") not in languages:
         saved = app.preferences().get("kalba", DEFAULT_LANGUAGE)
@@ -127,26 +124,25 @@ def main():
     st.set_page_config(page_title=t("app.title"), page_icon="ikona.ico", layout="wide")
     ui.apply()
     ui.header(t("brand.accent"), t("brand.subtitle", season=SEASON))
-    ctl = Controller(app, t, shared_state())
+    ctl = Controller(jobs, t)
 
-    with st.sidebar:
-        if st.button(t("sidebar.update"), width="stretch", type="primary", key="update_side"):
-            st.session_state["update_requested"] = True
-    if st.session_state.pop("update_requested", False) or ctl.updating:
-        st.session_state["update_errors"] = [(name, str(e)) for name, e in ctl.update()]
+    manual = jobs.update_job is not None and not jobs.update_job.auto
+    if st.session_state.pop("update_requested", False) or manual:
+        ctl.update()
         app.reload_settings()
         for k in [k for k in st.session_state if k.startswith("mult_")]:
             del st.session_state[k]
         st.rerun()
 
+    st.session_state["generation"] = jobs.generation
     data, fitted = ctl.model()
     for f in features.names():  # slankiklių reikšmės pritaikomos prieš skaičiuojant spėjimą
         if f"mult_{f}" in st.session_state:
             data.settings.multipliers[f] = float(st.session_state[f"mult_{f}"])
-    ctx = views.Ctx(app, t, data, fitted, ctl.weights_before(data), request_update)
+    ctx = views.Ctx(app, t, data, fitted, lambda kind, upto: ctl.model_before(kind, upto, data), request_update)
     nav = st.navigation([st.Page(lambda fn=fn: fn(ctx), title=t(f"nav.{key}"), url_path=key, default=i == 0)
                          for i, (key, fn) in enumerate(views.pages())])
-    sidebar(app, t, languages)
+    sidebar(app, jobs, updater, t, languages)
     nav.run()
 
 

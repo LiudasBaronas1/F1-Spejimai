@@ -13,9 +13,16 @@ def kind_of(session):
     return "quali" if session in QUALI_TYPE else "race"
 
 
-def _finished(status):
+def finished(status):
+    """Ar vairuotojas finišavo (įskaitant aplenktus ratu)."""
     s = str(status or "")
     return s == "Finished" or s.startswith("+") or s == "Lapped"
+
+
+def retired(status):
+    """Ar lenktynės baigėsi gedimu/avarija (diskvalifikacija ir nežinoma būsena – ne gedimas)."""
+    s = str(status or "")
+    return bool(s) and not finished(s) and s != "Disqualified"
 
 
 @dataclass
@@ -31,10 +38,9 @@ class Dataset:
     cache: dict = field(default_factory=dict)   # apskaičiuoti požymiai (pagal sesiją ir laiką)
 
     @classmethod
-    def load(cls, db, settings):
-        ref = Reference.load(db)
-        sess = db.query("SELECT s.*, w.rain_prob, w.rain_mm, w.region_rain_mm, w.temp_c, w.fc_pop, w.fc_cloud, "
-                        "w.track_rain_frac, w.source AS weather_source FROM sessions s LEFT JOIN weather w "
+    def load(cls, db, settings, ref):
+        sess = db.query("SELECT s.*, w.rain_prob, w.rain_prob_fc, w.rain_mm, w.region_rain_mm, w.temp_c, w.fc_pop, "
+                        "w.fc_cloud, w.track_rain_frac, w.source AS weather_source FROM sessions s LEFT JOIN weather w "
                         "USING(season, round, session)")
         events = db.query("SELECT * FROM events")
         events["circuit"] = events.location.map(ref.tracks.circuit)
@@ -43,10 +49,15 @@ class Dataset:
                    on=["season", "round", "session"]) \
             .merge(events[["season", "round", "circuit"]], on=["season", "round"])
         res["kind"] = np.where(res.session.isin(QUALI_TYPE), "quali", "race")
-        res["clean"] = (res.kind == "quali") | res.status.map(_finished)  # be gedimų / avarijų
+        res["clean"] = (res.kind == "quali") | res.status.map(finished)  # be gedimų / avarijų
+        res["dnf"] = (res.kind == "race") & res.status.map(retired)
         odds = db.query("SELECT season, round, session, market, driver, prob, price_ts, source FROM odds")
         return cls(sess, res, db.query("SELECT * FROM practice"), events, odds, settings, ref,
                    grid=db.query("SELECT season, round, session, driver, grid FROM starto_rikiuote"))
+
+    def with_settings(self, settings):
+        """Tie patys duomenys su kitais nustatymais (nauja požymių talpykla) – variantų palyginimui."""
+        return Dataset(self.sess, self.res, self.prac, self.events, self.odds, settings, self.ref, self.grid)
 
     # --- patogūs filtrai
     def session_rows(self, season, rnd, session=None):

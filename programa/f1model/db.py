@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS practice (
 CREATE TABLE IF NOT EXISTS weather (
     season INTEGER, round INTEGER, session TEXT,
     rain_prob REAL,            -- galutinė lietaus tikimybė (faktas iš jutiklių arba kalibruota prognozė)
+    rain_prob_fc REAL,         -- kalibruota prognozė (tokia, kokia buvo žinoma prieš sesiją)
     rain_mm REAL, region_rain_mm REAL, temp_c REAL, source TEXT, fetched_at TEXT,
     track_rain_frac REAL, track_air_c REAL, track_temp_c REAL,          -- trasos jutikliai
     fc_pop REAL, fc_pop_region REAL, fc_precip REAL, fc_cloud REAL,     -- prognozės požymiai
@@ -105,56 +106,9 @@ NEW_COLUMNS = [("results", "official_position", "INTEGER"), ("weather", "region_
                ("weather", "track_air_c", "REAL"), ("weather", "track_temp_c", "REAL"),
                ("weather", "fc_pop", "REAL"), ("weather", "fc_pop_region", "REAL"),
                ("weather", "fc_precip", "REAL"), ("weather", "fc_cloud", "REAL"),
-               ("atnaujinimai", "puslapis", "INTEGER")]
-
-VIEWS = {
-    "v_rezultatai": """
-        SELECT r.season AS metai, r.round AS etapas, e.name AS grand_prix, e.location AS trasa,
-               r.session AS sesija, s.date_utc AS data, r.driver AS vairuotojas, r.team AS komanda,
-               r.position AS vieta, r.official_position AS oficiali_vieta, r.grid AS starto_vieta,
-               r.status AS statusas, r.best_lap_s AS geriausias_ratas_s, r.points AS taskai,
-               w.rain_prob AS lietus, w.temp_c AS temperatura
-        FROM results r JOIN events e USING(season, round) JOIN sessions s USING(season, round, session)
-        LEFT JOIN weather w USING(season, round, session)""",
-    "v_orai": """
-        SELECT w.season AS metai, w.round AS etapas, e.name AS grand_prix, e.location AS trasa,
-               w.session AS sesija, s.date_utc AS data, w.rain_prob AS lietaus_tikimybe,
-               w.track_rain_frac AS lijo_trasoje_laiko_dalis, w.fc_pop AS prognozes_tikimybe,
-               w.rain_mm AS krituliai_mm, w.region_rain_mm AS krituliai_regione_mm, w.fc_cloud AS debesuotumas,
-               w.temp_c AS temperatura, w.track_temp_c AS trasos_temperatura, w.source AS saltinis
-        FROM weather w JOIN events e USING(season, round) JOIN sessions s USING(season, round, session)""",
-    "v_treniruotes": """
-        SELECT p.season AS metai, p.round AS etapas, e.name AS grand_prix, p.session AS sesija,
-               p.driver AS vairuotojas, p.team AS komanda, p.best_lap_s AS geriausias_ratas_s,
-               p.laps AS ratai, p.long_run_s AS ilgos_serijos_tempas_s,
-               p.long_run_laps AS ilgos_serijos_ratai, p.deg_s_per_lap AS padangu_devejimas_s_ratui,
-               p.ideal_lap_s AS idealus_ratas_s, p.quali_sim_s AS kvalif_simuliacija_s
-        FROM practice p JOIN events e USING(season, round)""",
-    "v_vairuotojai": """
-        SELECT r.season AS metai, r.driver AS vairuotojas, MAX(r.team) AS komanda,
-               SUM(r.session='R') AS lenktynes, SUM(r.session='R' AND r.position=1) AS pergales,
-               SUM(r.session='R' AND r.position<=3) AS podiumai,
-               ROUND(AVG(CASE WHEN r.session='R' THEN r.position END), 2) AS vid_vieta_lenktynese,
-               ROUND(AVG(CASE WHEN r.session='Q' THEN r.position END), 2) AS vid_vieta_kvalifikacijoje,
-               SUM(r.session='Q' AND r.position=1) AS pole_pozicijos, SUM(r.points) AS taskai
-        FROM results r GROUP BY r.season, r.driver""",
-    "v_koeficientai": """
-        SELECT o.season AS metai, o.round AS etapas, e.name AS grand_prix, o.session AS sesija,
-               o.market AS rinka, o.source AS saltinis, o.driver AS vairuotojas, ROUND(o.prob, 4) AS tikimybe,
-               ROUND(1.0 / NULLIF(o.prob, 0), 2) AS koeficientas, ROUND(o.volume) AS apyvarta_usd,
-               o.price_ts AS kainos_laikas, r.position AS tikra_vieta
-        FROM odds o JOIN events e USING(season, round) LEFT JOIN results r USING(season, round, session, driver)""",
-    "v_modelio_spejimai": """
-        SELECT p.created_at AS sukurta, p.season AS metai, p.round AS etapas, e.name AS grand_prix,
-               p.session AS sesija, p.pick_pos AS speta_vieta, p.driver AS vairuotojas,
-               ROUND(p.p_top3, 3) AS tikimybe_top3, r.position AS tikra_vieta
-        FROM predictions p JOIN events e USING(season, round) LEFT JOIN results r USING(season, round, session, driver)
-        WHERE p.pick_pos IS NOT NULL""",
-    "v_atnaujinimai": """
-        SELECT a.season AS metai, a.round AS etapas, e.name AS grand_prix, a.komanda, a.nr, a.detale,
-               a.priezastis, a.aprasymas
-        FROM atnaujinimai a JOIN events e USING(season, round)""",
-}
+               ("atnaujinimai", "puslapis", "INTEGER"), ("weather", "rain_prob_fc", "REAL")]
+OLD_VIEWS = ["v_rezultatai", "v_orai", "v_treniruotes", "v_vairuotojai", "v_koeficientai", "v_modelio_spejimai",
+             "v_atnaujinimai"]   # buvusios SQL skilties rodiniai – pašalinami
 
 class Database:
     def __init__(self, path):
@@ -180,12 +134,8 @@ class Database:
             if col not in {r[1] for r in con.execute(f"PRAGMA table_info({table})")}:
                 con.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
         con.execute("UPDATE results SET official_position = position WHERE official_position IS NULL")
-        existing = dict(con.execute("SELECT name, sql FROM sqlite_master WHERE type='view'").fetchall())
-        for name, sql in VIEWS.items():
-            create = f"CREATE VIEW {name} AS {sql}"
-            if existing.get(name) != create:  # perkuriame tik pasikeitusius (kad nekistų DB failas)
-                con.execute(f"DROP VIEW IF EXISTS {name}")
-                con.execute(create)
+        for name in OLD_VIEWS:
+            con.execute(f"DROP VIEW IF EXISTS {name}")
         tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
         for table in tables:
             for op in ("INSERT", "UPDATE", "DELETE"):
@@ -194,9 +144,6 @@ class Database:
                 else:
                     con.execute(f"CREATE TRIGGER IF NOT EXISTS {table}_{op.lower()}_versija AFTER {op} ON {table} "
                                 f"BEGIN UPDATE duomenu_versija SET n = n + 1; END")
-
-    def mtime(self):
-        return self.path.stat().st_mtime if self.path.exists() else 0
 
     def data_version(self):
         """Keičiasi tik pasikeitus modelio duomenims (ne sąsajos tekstams, išsaugotiems spėjimams ar svoriams)."""
