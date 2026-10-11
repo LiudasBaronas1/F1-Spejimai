@@ -157,17 +157,19 @@ def predict(data, season, rnd, session, fitted=None, before=None):
     kiekvieno požymio indėlį į vairuotojo stiprumą (contrib)."""
     S = data.settings
     X = features.build(data, season, rnd, session, before=before)
+    rain, temp, dnf = X.attrs["rain"], X.attrs["temp"], X.attrs["dnf"].values
+    X = X.copy()
+    X.attrs = {}    # grąžinamos lentelės be X.attrs: pandas jas lygina sujungiant, o lentelių lyginimas – klaida
     fitted = fitted or fit_weights(kind_of(session), data, upto=before)
     w, names = fitted.effective(S), features.names()
-    scale = fitted.scale(session, X.attrs["rain"])
+    scale = fitted.scale(session, rain)
     contrib = X[names] * np.array([w[f] for f in names]) * scale
-    probs = simulate(contrib.sum(axis=1).values, S.n_sim, X.attrs["dnf"].values)
+    probs = simulate(contrib.sum(axis=1).values, S.n_sim, dnf)
     pick, ev = best_pick(probs, list(X.index))
-    table = pd.DataFrame(probs, index=X.index, columns=["P1", "P2", "P3"]).assign(
-        TOP3=probs.sum(axis=1), DNF=X.attrs["dnf"].values)
+    table = pd.DataFrame(probs, index=X.index, columns=["P1", "P2", "P3"]).assign(TOP3=probs.sum(axis=1), DNF=dnf)
     table = table.join(X).sort_values("TOP3", ascending=False)
     return dict(pick=pick, expected=ev, table=table, contrib=contrib.loc[table.index], weights=w,
-                rain=X.attrs["rain"], temp=X.attrs["temp"])
+                rain=rain, temp=temp)
 
 
 def score(pick, actual_top3):

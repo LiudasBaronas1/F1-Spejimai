@@ -126,8 +126,8 @@ def main():
     ui.header(t("brand.accent"), t("brand.subtitle", season=SEASON))
     ctl = Controller(jobs, t)
 
-    manual = jobs.update_job is not None and not jobs.update_job.auto
-    if st.session_state.pop("update_requested", False) or manual:
+    job = jobs.update_job   # vieną kartą: foninis darbas gali baigtis tarp dviejų skaitymų
+    if st.session_state.pop("update_requested", False) or (job is not None and not job.auto):
         ctl.update()
         app.reload_settings()
         for k in [k for k in st.session_state if k.startswith("mult_")]:

@@ -86,6 +86,14 @@ class EndToEndTest(unittest.TestCase):
         saved = self.app.db.query("SELECT kind, name FROM model_params WHERE name='_sprinto_daugiklis'")
         self.assertEqual(sorted(saved.kind), ["quali", "race"])
 
+    def test_prediction_tables_can_be_reshaped(self):
+        # sąsajos grafikas daro melt(); anksčiau X.attrs (lentelės) perėjo į rezultatą ir melt() lūždavo
+        out = model.predict(self.data, 2026, 9, "R")
+        self.assertEqual(out["contrib"].attrs, {})
+        self.assertEqual(out["table"].attrs, {})
+        long = out["contrib"].head(8).reset_index(names="d").melt("d", var_name="f", value_name="v")
+        self.assertEqual(len(long), 8 * out["contrib"].shape[1])
+
     def test_disabled_feature_is_not_used(self):
         data = self.data.with_settings(self.data.settings.with_values(disabled=["form"]))
         m = model.fit_weights("race", data)

@@ -399,6 +399,6 @@ def build(data, season, rnd, session, before=None):
         if f.scale:
             X[f.name] = X[f.name] * f.scale(ctx)
     X.index.name = "driver"
-    X.attrs.update(raw=raw, rain=ctx.rain, temp=ctx.temp, dnf=dnf_probability(ctx).reindex(ctx.drivers).fillna(0.0))
+    X.attrs.update(rain=ctx.rain, temp=ctx.temp, dnf=dnf_probability(ctx).reindex(ctx.drivers).fillna(0.0))
     data.cache[key] = X
     return X
